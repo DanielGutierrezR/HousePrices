@@ -133,3 +133,103 @@ grid.arrange(sl1, sl2)
 ## As we can see, the data is more concentrated to the left. In this subsample, the effects
 ## are non-linear. It is an important feature to consider when fitting a regression.
 
+# Lets investigate the effects of different zones. 
+plot(house$MSZoning) ## This seems like a problem
+table(house$MSZoning) ## C and RH are less than 20 observations. There is not enough data for the zones.
+
+## Area
+house %>% 
+  ggplot(aes(SalePrice, fill = MSZoning)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+plot(house$Neighborhood)
+house %>% 
+  ggplot(aes(SalePrice, fill = Neighborhood)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+## Features of the house
+house %>% 
+  ggplot(aes(SalePrice, fill = MSSubClass)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+## Houses built in 1946 and newer(Groups: 20, 60, 120) were sold at a higher price than older.
+## Among those, 2-story houses(60) are the more expensive. 
+house %>% 
+  ggplot(aes(SalePrice, fill = LotShape)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = Condition1)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+house %>% 
+  ggplot(aes(SalePrice, fill = Condition2)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+
+house %>% 
+  ggplot(aes(SalePrice, fill = HouseStyle)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = OverallQual)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = OverallCond)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = as.factor(FullBath))) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = ExterCond)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = as.factor(BedroomAbvGr))) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = GarageType)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = PoolQC)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+
+house %>% 
+  ggplot(aes(SalePrice, fill = YrSold)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = MoSold)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  ggplot(aes(SalePrice, fill = SaleCondition)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip()
+
+house %>% 
+  filter(SalePrice < 650000 & LotArea < 20000) %>% 
+  ggplot(aes(SalePrice,YearBuilt)) +
+  geom_point() +
+  geom_smooth(method = "gam")+
+  coord_flip()
