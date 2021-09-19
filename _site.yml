@@ -1,0 +1,9 @@
+name: "House Prices"
+output_dir: "."
+navbar:
+  title: "House Prices"
+  left:
+      - text: "Home"
+        href: index.html
+      - text: "House Prices Prediction"
+        href: houseprices.html

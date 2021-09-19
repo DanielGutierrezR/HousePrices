@@ -1,0 +1,82 @@
+---
+title: "House Prices Prediction"
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = TRUE, message = FALSE,
+                     echo = TRUE, dpi = 180, fig.width = 8, fig.height = 5)
+library(tidyverse)
+library(tidymodels)
+library(caret)
+theme_set(theme_bw())
+```
+
+```{r}
+setwd("C:/Users/Daniel Gutierrez/Desktop/R Practice/House Prices")
+houseprices <- readr::read_csv("train.csv")
+summary(houseprices)
+```
+```{r}
+sum(is.na(houseprices))
+```
+First thing to notice, according to the variable description, there are several indicator variables that we must transform before perfoming any exploration on the data. Secondly, there are a lot of NA's for LotFrontage. So lets make the data set readable before. We can convert to factor every indicator variable.
+```{r}
+houseprices_factors <- houseprices %>% 
+  mutate(MSSubClass = factor(MSSubClass),
+         MSZoning = factor(MSZoning),
+         Street = factor(Street),
+         Alley = factor(Alley),
+         LotShape = factor(LotShape),
+         LandContour = factor(LandContour),
+         Utilities = factor(Utilities),
+         LotConfig = factor(LotConfig),
+         LandSlope = factor(LandSlope),
+         Neighborhood = factor(Neighborhood),
+         Condition1 = factor(Condition1),
+         Condition2 = factor(Condition2),
+         BldgType = factor(BldgType),
+         HouseStyle = factor(HouseStyle),
+         OverallQual = factor(OverallQual),
+         OverallCond = factor(OverallCond),
+         RoofStyle = factor(RoofStyle),
+         RoofMatl = factor(RoofMatl),
+         Exterior1st = factor(Exterior1st),
+         Exterior2nd = factor(Exterior2nd),
+         MasVnrType = factor(MasVnrType),
+         ExterQual = factor(ExterQual),
+         ExterCond = factor(ExterCond),
+         Foundation = factor(Foundation),
+         BsmtQual = factor(BsmtQual),
+         BsmtCond = factor(BsmtCond),
+         BsmtExposure = factor(BsmtExposure),
+         BsmtFinType1 = factor(BsmtFinType1),
+         BsmtFinType2 = factor(BsmtFinType2),
+         Heating = factor(Heating),
+         HeatingQC = factor(HeatingQC),
+         CentralAir = factor(CentralAir),
+         Electrical = factor(Electrical),
+         KitchenQual = factor(KitchenQual),
+         Functional = factor(Functional),
+         FireplaceQu = factor(FireplaceQu),
+         GarageType = factor(GarageType),
+         GarageFinish = factor(GarageFinish),
+         GarageQual = factor(GarageQual),
+         GarageCond = factor(GarageCond),
+         PavedDrive = factor(PavedDrive),
+         PoolQC = factor(PoolQC),
+         Fence = factor(Fence),
+         MiscFeature = factor(MiscFeature),
+         SaleType = factor(SaleType),
+         SaleCondition = factor(SaleCondition))
+```
+```{r}
+summary(houseprices_factors)
+```
+For the NA's in the categorical variables we can substitute them for a NO since NA means that the house does not have that feature. Now, lets find out how to impute the NA's in LotFrontage. We could separate the houses in different categories according to their features and obtain the mean LotFrontage for each category and impute it on the NAs. We can use the variables that have more correlation with LotFrontage. 
+
+```{r}
+
+```
+
+
