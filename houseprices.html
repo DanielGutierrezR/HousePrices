@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>House Prices Prediction</title>
+
+<script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">House Prices</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="houseprices.html">House Prices Prediction</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">House Prices Prediction</h1>
+
+</div>
+
+
+<pre class="r"><code>setwd(&quot;C:/Users/Daniel Gutierrez/Desktop/R Practice/House Prices&quot;)
+houseprices &lt;- readr::read_csv(&quot;train.csv&quot;)
+summary(houseprices)</code></pre>
+<pre><code>##        Id           MSSubClass      MSZoning          LotFrontage    
+##  Min.   :   1.0   Min.   : 20.0   Length:1460        Min.   : 21.00  
+##  1st Qu.: 365.8   1st Qu.: 20.0   Class :character   1st Qu.: 59.00  
+##  Median : 730.5   Median : 50.0   Mode  :character   Median : 69.00  
+##  Mean   : 730.5   Mean   : 56.9                      Mean   : 70.05  
+##  3rd Qu.:1095.2   3rd Qu.: 70.0                      3rd Qu.: 80.00  
+##  Max.   :1460.0   Max.   :190.0                      Max.   :313.00  
+##                                                      NA&#39;s   :259     
+##     LotArea          Street             Alley             LotShape        
+##  Min.   :  1300   Length:1460        Length:1460        Length:1460       
+##  1st Qu.:  7554   Class :character   Class :character   Class :character  
+##  Median :  9478   Mode  :character   Mode  :character   Mode  :character  
+##  Mean   : 10517                                                           
+##  3rd Qu.: 11602                                                           
+##  Max.   :215245                                                           
+##                                                                           
+##  LandContour         Utilities          LotConfig          LandSlope        
+##  Length:1460        Length:1460        Length:1460        Length:1460       
+##  Class :character   Class :character   Class :character   Class :character  
+##  Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+##                                                                             
+##                                                                             
+##                                                                             
+##                                                                             
+##  Neighborhood        Condition1         Condition2          BldgType        
+##  Length:1460        Length:1460        Length:1460        Length:1460       
+##  Class :character   Class :character   Class :character   Class :character  
+##  Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+##                                                                             
+##                                                                             
+##                                                                             
+##                                                                             
+##   HouseStyle         OverallQual      OverallCond      YearBuilt   
+##  Length:1460        Min.   : 1.000   Min.   :1.000   Min.   :1872  
+##  Class :character   1st Qu.: 5.000   1st Qu.:5.000   1st Qu.:1954  
+##  Mode  :character   Median : 6.000   Median :5.000   Median :1973  
+##                     Mean   : 6.099   Mean   :5.575   Mean   :1971  
+##                     3rd Qu.: 7.000   3rd Qu.:6.000   3rd Qu.:2000  
+##                     Max.   :10.000   Max.   :9.000   Max.   :2010  
+##                                                                    
+##   YearRemodAdd   RoofStyle           RoofMatl         Exterior1st       
+##  Min.   :1950   Length:1460        Length:1460        Length:1460       
+##  1st Qu.:1967   Class :character   Class :character   Class :character  
+##  Median :1994   Mode  :character   Mode  :character   Mode  :character  
+##  Mean   :1985                                                           
+##  3rd Qu.:2004                                                           
+##  Max.   :2010                                                           
+##                                                                         
+##  Exterior2nd         MasVnrType          MasVnrArea      ExterQual        
+##  Length:1460        Length:1460        Min.   :   0.0   Length:1460       
+##  Class :character   Class :character   1st Qu.:   0.0   Class :character  
+##  Mode  :character   Mode  :character   Median :   0.0   Mode  :character  
+##                                        Mean   : 103.7                     
+##                                        3rd Qu.: 166.0                     
+##                                        Max.   :1600.0                     
+##                                        NA&#39;s   :8                          
+##   ExterCond          Foundation          BsmtQual           BsmtCond        
+##  Length:1460        Length:1460        Length:1460        Length:1460       
+##  Class :character   Class :character   Class :character   Class :character  
+##  Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+##                                                                             
+##                                                                             
+##                                                                             
+##                                                                             
+##  BsmtExposure       BsmtFinType1         BsmtFinSF1     BsmtFinType2      
+##  Length:1460        Length:1460        Min.   :   0.0   Length:1460       
+##  Class :character   Class :character   1st Qu.:   0.0   Class :character  
+##  Mode  :character   Mode  :character   Median : 383.5   Mode  :character  
+##                                        Mean   : 443.6                     
+##                                        3rd Qu.: 712.2                     
+##                                        Max.   :5644.0                     
+##                                                                           
+##    BsmtFinSF2        BsmtUnfSF       TotalBsmtSF       Heating         
+##  Min.   :   0.00   Min.   :   0.0   Min.   :   0.0   Length:1460       
+##  1st Qu.:   0.00   1st Qu.: 223.0   1st Qu.: 795.8   Class :character  
+##  Median :   0.00   Median : 477.5   Median : 991.5   Mode  :character  
+##  Mean   :  46.55   Mean   : 567.2   Mean   :1057.4                     
+##  3rd Qu.:   0.00   3rd Qu.: 808.0   3rd Qu.:1298.2                     
+##  Max.   :1474.00   Max.   :2336.0   Max.   :6110.0                     
+##                                                                        
+##   HeatingQC          CentralAir         Electrical           1stFlrSF   
+##  Length:1460        Length:1460        Length:1460        Min.   : 334  
+##  Class :character   Class :character   Class :character   1st Qu.: 882  
+##  Mode  :character   Mode  :character   Mode  :character   Median :1087  
+##                                                           Mean   :1163  
+##                                                           3rd Qu.:1391  
+##                                                           Max.   :4692  
+##                                                                         
+##     2ndFlrSF     LowQualFinSF       GrLivArea     BsmtFullBath   
+##  Min.   :   0   Min.   :  0.000   Min.   : 334   Min.   :0.0000  
+##  1st Qu.:   0   1st Qu.:  0.000   1st Qu.:1130   1st Qu.:0.0000  
+##  Median :   0   Median :  0.000   Median :1464   Median :0.0000  
+##  Mean   : 347   Mean   :  5.845   Mean   :1515   Mean   :0.4253  
+##  3rd Qu.: 728   3rd Qu.:  0.000   3rd Qu.:1777   3rd Qu.:1.0000  
+##  Max.   :2065   Max.   :572.000   Max.   :5642   Max.   :3.0000  
+##                                                                  
+##   BsmtHalfBath        FullBath        HalfBath       BedroomAbvGr  
+##  Min.   :0.00000   Min.   :0.000   Min.   :0.0000   Min.   :0.000  
+##  1st Qu.:0.00000   1st Qu.:1.000   1st Qu.:0.0000   1st Qu.:2.000  
+##  Median :0.00000   Median :2.000   Median :0.0000   Median :3.000  
+##  Mean   :0.05753   Mean   :1.565   Mean   :0.3829   Mean   :2.866  
+##  3rd Qu.:0.00000   3rd Qu.:2.000   3rd Qu.:1.0000   3rd Qu.:3.000  
+##  Max.   :2.00000   Max.   :3.000   Max.   :2.0000   Max.   :8.000  
+##                                                                    
+##   KitchenAbvGr   KitchenQual         TotRmsAbvGrd     Functional       
+##  Min.   :0.000   Length:1460        Min.   : 2.000   Length:1460       
+##  1st Qu.:1.000   Class :character   1st Qu.: 5.000   Class :character  
+##  Median :1.000   Mode  :character   Median : 6.000   Mode  :character  
+##  Mean   :1.047                      Mean   : 6.518                     
+##  3rd Qu.:1.000                      3rd Qu.: 7.000                     
+##  Max.   :3.000                      Max.   :14.000                     
+##                                                                        
+##    Fireplaces    FireplaceQu         GarageType         GarageYrBlt  
+##  Min.   :0.000   Length:1460        Length:1460        Min.   :1900  
+##  1st Qu.:0.000   Class :character   Class :character   1st Qu.:1961  
+##  Median :1.000   Mode  :character   Mode  :character   Median :1980  
+##  Mean   :0.613                                         Mean   :1979  
+##  3rd Qu.:1.000                                         3rd Qu.:2002  
+##  Max.   :3.000                                         Max.   :2010  
+##                                                        NA&#39;s   :81    
+##  GarageFinish         GarageCars      GarageArea      GarageQual       
+##  Length:1460        Min.   :0.000   Min.   :   0.0   Length:1460       
+##  Class :character   1st Qu.:1.000   1st Qu.: 334.5   Class :character  
+##  Mode  :character   Median :2.000   Median : 480.0   Mode  :character  
+##                     Mean   :1.767   Mean   : 473.0                     
+##                     3rd Qu.:2.000   3rd Qu.: 576.0                     
+##                     Max.   :4.000   Max.   :1418.0                     
+##                                                                        
+##   GarageCond         PavedDrive          WoodDeckSF      OpenPorchSF    
+##  Length:1460        Length:1460        Min.   :  0.00   Min.   :  0.00  
+##  Class :character   Class :character   1st Qu.:  0.00   1st Qu.:  0.00  
+##  Mode  :character   Mode  :character   Median :  0.00   Median : 25.00  
+##                                        Mean   : 94.24   Mean   : 46.66  
+##                                        3rd Qu.:168.00   3rd Qu.: 68.00  
+##                                        Max.   :857.00   Max.   :547.00  
+##                                                                         
+##  EnclosedPorch      3SsnPorch       ScreenPorch        PoolArea      
+##  Min.   :  0.00   Min.   :  0.00   Min.   :  0.00   Min.   :  0.000  
+##  1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.000  
+##  Median :  0.00   Median :  0.00   Median :  0.00   Median :  0.000  
+##  Mean   : 21.95   Mean   :  3.41   Mean   : 15.06   Mean   :  2.759  
+##  3rd Qu.:  0.00   3rd Qu.:  0.00   3rd Qu.:  0.00   3rd Qu.:  0.000  
+##  Max.   :552.00   Max.   :508.00   Max.   :480.00   Max.   :738.000  
+##                                                                      
+##     PoolQC             Fence           MiscFeature           MiscVal        
+##  Length:1460        Length:1460        Length:1460        Min.   :    0.00  
+##  Class :character   Class :character   Class :character   1st Qu.:    0.00  
+##  Mode  :character   Mode  :character   Mode  :character   Median :    0.00  
+##                                                           Mean   :   43.49  
+##                                                           3rd Qu.:    0.00  
+##                                                           Max.   :15500.00  
+##                                                                             
+##      MoSold           YrSold       SaleType         SaleCondition     
+##  Min.   : 1.000   Min.   :2006   Length:1460        Length:1460       
+##  1st Qu.: 5.000   1st Qu.:2007   Class :character   Class :character  
+##  Median : 6.000   Median :2008   Mode  :character   Mode  :character  
+##  Mean   : 6.322   Mean   :2008                                        
+##  3rd Qu.: 8.000   3rd Qu.:2009                                        
+##  Max.   :12.000   Max.   :2010                                        
+##                                                                       
+##    SalePrice     
+##  Min.   : 34900  
+##  1st Qu.:129975  
+##  Median :163000  
+##  Mean   :180921  
+##  3rd Qu.:214000  
+##  Max.   :755000  
+## </code></pre>
+<pre class="r"><code>sum(is.na(houseprices))</code></pre>
+<pre><code>## [1] 6965</code></pre>
+<p>First thing to notice, according to the variable description, there are several indicator variables that we must transform before perfoming any exploration on the data. Secondly, there are a lot of NA’s for LotFrontage. So lets make the data set readable before. We can convert to factor every indicator variable.</p>
+<pre class="r"><code>houseprices_factors &lt;- houseprices %&gt;% 
+  mutate(MSSubClass = factor(MSSubClass),
+         MSZoning = factor(MSZoning),
+         Street = factor(Street),
+         Alley = factor(Alley),
+         LotShape = factor(LotShape),
+         LandContour = factor(LandContour),
+         Utilities = factor(Utilities),
+         LotConfig = factor(LotConfig),
+         LandSlope = factor(LandSlope),
+         Neighborhood = factor(Neighborhood),
+         Condition1 = factor(Condition1),
+         Condition2 = factor(Condition2),
+         BldgType = factor(BldgType),
+         HouseStyle = factor(HouseStyle),
+         OverallQual = factor(OverallQual),
+         OverallCond = factor(OverallCond),
+         RoofStyle = factor(RoofStyle),
+         RoofMatl = factor(RoofMatl),
+         Exterior1st = factor(Exterior1st),
+         Exterior2nd = factor(Exterior2nd),
+         MasVnrType = factor(MasVnrType),
+         ExterQual = factor(ExterQual),
+         ExterCond = factor(ExterCond),
+         Foundation = factor(Foundation),
+         BsmtQual = factor(BsmtQual),
+         BsmtCond = factor(BsmtCond),
+         BsmtExposure = factor(BsmtExposure),
+         BsmtFinType1 = factor(BsmtFinType1),
+         BsmtFinType2 = factor(BsmtFinType2),
+         Heating = factor(Heating),
+         HeatingQC = factor(HeatingQC),
+         CentralAir = factor(CentralAir),
+         Electrical = factor(Electrical),
+         KitchenQual = factor(KitchenQual),
+         Functional = factor(Functional),
+         FireplaceQu = factor(FireplaceQu),
+         GarageType = factor(GarageType),
+         GarageFinish = factor(GarageFinish),
+         GarageQual = factor(GarageQual),
+         GarageCond = factor(GarageCond),
+         PavedDrive = factor(PavedDrive),
+         PoolQC = factor(PoolQC),
+         Fence = factor(Fence),
+         MiscFeature = factor(MiscFeature),
+         SaleType = factor(SaleType),
+         SaleCondition = factor(SaleCondition))</code></pre>
+<pre class="r"><code>summary(houseprices_factors)</code></pre>
+<pre><code>##        Id           MSSubClass     MSZoning     LotFrontage    
+##  Min.   :   1.0   20     :536   C (all):  10   Min.   : 21.00  
+##  1st Qu.: 365.8   60     :299   FV     :  65   1st Qu.: 59.00  
+##  Median : 730.5   50     :144   RH     :  16   Median : 69.00  
+##  Mean   : 730.5   120    : 87   RL     :1151   Mean   : 70.05  
+##  3rd Qu.:1095.2   30     : 69   RM     : 218   3rd Qu.: 80.00  
+##  Max.   :1460.0   160    : 63                  Max.   :313.00  
+##                   (Other):262                  NA&#39;s   :259     
+##     LotArea        Street      Alley      LotShape  LandContour  Utilities   
+##  Min.   :  1300   Grvl:   6   Grvl:  50   IR1:484   Bnk:  63    AllPub:1459  
+##  1st Qu.:  7554   Pave:1454   Pave:  41   IR2: 41   HLS:  50    NoSeWa:   1  
+##  Median :  9478               NA&#39;s:1369   IR3: 10   Low:  36                 
+##  Mean   : 10517                           Reg:925   Lvl:1311                 
+##  3rd Qu.: 11602                                                              
+##  Max.   :215245                                                              
+##                                                                              
+##    LotConfig    LandSlope   Neighborhood   Condition1     Condition2  
+##  Corner : 263   Gtl:1382   NAmes  :225   Norm   :1260   Norm   :1445  
+##  CulDSac:  94   Mod:  65   CollgCr:150   Feedr  :  81   Feedr  :   6  
+##  FR2    :  47   Sev:  13   OldTown:113   Artery :  48   Artery :   2  
+##  FR3    :   4              Edwards:100   RRAn   :  26   PosN   :   2  
+##  Inside :1052              Somerst: 86   PosN   :  19   RRNn   :   2  
+##                            Gilbert: 79   RRAe   :  11   PosA   :   1  
+##                            (Other):707   (Other):  15   (Other):   2  
+##    BldgType      HouseStyle   OverallQual   OverallCond    YearBuilt   
+##  1Fam  :1220   1Story :726   5      :397   5      :821   Min.   :1872  
+##  2fmCon:  31   2Story :445   6      :374   6      :252   1st Qu.:1954  
+##  Duplex:  52   1.5Fin :154   7      :319   7      :205   Median :1973  
+##  Twnhs :  43   SLvl   : 65   8      :168   8      : 72   Mean   :1971  
+##  TwnhsE: 114   SFoyer : 37   4      :116   4      : 57   3rd Qu.:2000  
+##                1.5Unf : 14   9      : 43   3      : 25   Max.   :2010  
+##                (Other): 19   (Other): 43   (Other): 28                 
+##   YearRemodAdd    RoofStyle       RoofMatl     Exterior1st   Exterior2nd 
+##  Min.   :1950   Flat   :  13   CompShg:1434   VinylSd:515   VinylSd:504  
+##  1st Qu.:1967   Gable  :1141   Tar&amp;Grv:  11   HdBoard:222   MetalSd:214  
+##  Median :1994   Gambrel:  11   WdShngl:   6   MetalSd:220   HdBoard:207  
+##  Mean   :1985   Hip    : 286   WdShake:   5   Wd Sdng:206   Wd Sdng:197  
+##  3rd Qu.:2004   Mansard:   7   ClyTile:   1   Plywood:108   Plywood:142  
+##  Max.   :2010   Shed   :   2   Membran:   1   CemntBd: 61   CmentBd: 60  
+##                                (Other):   2   (Other):128   (Other):136  
+##    MasVnrType    MasVnrArea     ExterQual ExterCond  Foundation  BsmtQual  
+##  BrkCmn : 15   Min.   :   0.0   Ex: 52    Ex:   3   BrkTil:146   Ex  :121  
+##  BrkFace:445   1st Qu.:   0.0   Fa: 14    Fa:  28   CBlock:634   Fa  : 35  
+##  None   :864   Median :   0.0   Gd:488    Gd: 146   PConc :647   Gd  :618  
+##  Stone  :128   Mean   : 103.7   TA:906    Po:   1   Slab  : 24   TA  :649  
+##  NA&#39;s   :  8   3rd Qu.: 166.0             TA:1282   Stone :  6   NA&#39;s: 37  
+##                Max.   :1600.0                       Wood  :  3             
+##                NA&#39;s   :8                                                   
+##  BsmtCond    BsmtExposure BsmtFinType1   BsmtFinSF1     BsmtFinType2
+##  Fa  :  45   Av  :221     ALQ :220     Min.   :   0.0   ALQ :  19   
+##  Gd  :  65   Gd  :134     BLQ :148     1st Qu.:   0.0   BLQ :  33   
+##  Po  :   2   Mn  :114     GLQ :418     Median : 383.5   GLQ :  14   
+##  TA  :1311   No  :953     LwQ : 74     Mean   : 443.6   LwQ :  46   
+##  NA&#39;s:  37   NA&#39;s: 38     Rec :133     3rd Qu.: 712.2   Rec :  54   
+##                           Unf :430     Max.   :5644.0   Unf :1256   
+##                           NA&#39;s: 37                      NA&#39;s:  38   
+##    BsmtFinSF2        BsmtUnfSF       TotalBsmtSF      Heating     HeatingQC
+##  Min.   :   0.00   Min.   :   0.0   Min.   :   0.0   Floor:   1   Ex:741   
+##  1st Qu.:   0.00   1st Qu.: 223.0   1st Qu.: 795.8   GasA :1428   Fa: 49   
+##  Median :   0.00   Median : 477.5   Median : 991.5   GasW :  18   Gd:241   
+##  Mean   :  46.55   Mean   : 567.2   Mean   :1057.4   Grav :   7   Po:  1   
+##  3rd Qu.:   0.00   3rd Qu.: 808.0   3rd Qu.:1298.2   OthW :   2   TA:428   
+##  Max.   :1474.00   Max.   :2336.0   Max.   :6110.0   Wall :   4            
+##                                                                            
+##  CentralAir Electrical      1stFlrSF       2ndFlrSF     LowQualFinSF    
+##  N:  95     FuseA:  94   Min.   : 334   Min.   :   0   Min.   :  0.000  
+##  Y:1365     FuseF:  27   1st Qu.: 882   1st Qu.:   0   1st Qu.:  0.000  
+##             FuseP:   3   Median :1087   Median :   0   Median :  0.000  
+##             Mix  :   1   Mean   :1163   Mean   : 347   Mean   :  5.845  
+##             SBrkr:1334   3rd Qu.:1391   3rd Qu.: 728   3rd Qu.:  0.000  
+##             NA&#39;s :   1   Max.   :4692   Max.   :2065   Max.   :572.000  
+##                                                                         
+##    GrLivArea     BsmtFullBath     BsmtHalfBath        FullBath    
+##  Min.   : 334   Min.   :0.0000   Min.   :0.00000   Min.   :0.000  
+##  1st Qu.:1130   1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.:1.000  
+##  Median :1464   Median :0.0000   Median :0.00000   Median :2.000  
+##  Mean   :1515   Mean   :0.4253   Mean   :0.05753   Mean   :1.565  
+##  3rd Qu.:1777   3rd Qu.:1.0000   3rd Qu.:0.00000   3rd Qu.:2.000  
+##  Max.   :5642   Max.   :3.0000   Max.   :2.00000   Max.   :3.000  
+##                                                                   
+##     HalfBath       BedroomAbvGr    KitchenAbvGr   KitchenQual  TotRmsAbvGrd   
+##  Min.   :0.0000   Min.   :0.000   Min.   :0.000   Ex:100      Min.   : 2.000  
+##  1st Qu.:0.0000   1st Qu.:2.000   1st Qu.:1.000   Fa: 39      1st Qu.: 5.000  
+##  Median :0.0000   Median :3.000   Median :1.000   Gd:586      Median : 6.000  
+##  Mean   :0.3829   Mean   :2.866   Mean   :1.047   TA:735      Mean   : 6.518  
+##  3rd Qu.:1.0000   3rd Qu.:3.000   3rd Qu.:1.000               3rd Qu.: 7.000  
+##  Max.   :2.0000   Max.   :8.000   Max.   :3.000               Max.   :14.000  
+##                                                                               
+##  Functional    Fireplaces    FireplaceQu   GarageType   GarageYrBlt  
+##  Maj1:  14   Min.   :0.000   Ex  : 24    2Types :  6   Min.   :1900  
+##  Maj2:   5   1st Qu.:0.000   Fa  : 33    Attchd :870   1st Qu.:1961  
+##  Min1:  31   Median :1.000   Gd  :380    Basment: 19   Median :1980  
+##  Min2:  34   Mean   :0.613   Po  : 20    BuiltIn: 88   Mean   :1979  
+##  Mod :  15   3rd Qu.:1.000   TA  :313    CarPort:  9   3rd Qu.:2002  
+##  Sev :   1   Max.   :3.000   NA&#39;s:690    Detchd :387   Max.   :2010  
+##  Typ :1360                               NA&#39;s   : 81   NA&#39;s   :81    
+##  GarageFinish   GarageCars      GarageArea     GarageQual  GarageCond 
+##  Fin :352     Min.   :0.000   Min.   :   0.0   Ex  :   3   Ex  :   2  
+##  RFn :422     1st Qu.:1.000   1st Qu.: 334.5   Fa  :  48   Fa  :  35  
+##  Unf :605     Median :2.000   Median : 480.0   Gd  :  14   Gd  :   9  
+##  NA&#39;s: 81     Mean   :1.767   Mean   : 473.0   Po  :   3   Po  :   7  
+##               3rd Qu.:2.000   3rd Qu.: 576.0   TA  :1311   TA  :1326  
+##               Max.   :4.000   Max.   :1418.0   NA&#39;s:  81   NA&#39;s:  81  
+##                                                                       
+##  PavedDrive   WoodDeckSF      OpenPorchSF     EnclosedPorch      3SsnPorch     
+##  N:  90     Min.   :  0.00   Min.   :  0.00   Min.   :  0.00   Min.   :  0.00  
+##  P:  30     1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.00  
+##  Y:1340     Median :  0.00   Median : 25.00   Median :  0.00   Median :  0.00  
+##             Mean   : 94.24   Mean   : 46.66   Mean   : 21.95   Mean   :  3.41  
+##             3rd Qu.:168.00   3rd Qu.: 68.00   3rd Qu.:  0.00   3rd Qu.:  0.00  
+##             Max.   :857.00   Max.   :547.00   Max.   :552.00   Max.   :508.00  
+##                                                                                
+##   ScreenPorch        PoolArea        PoolQC       Fence      MiscFeature
+##  Min.   :  0.00   Min.   :  0.000   Ex  :   2   GdPrv:  59   Gar2:   2  
+##  1st Qu.:  0.00   1st Qu.:  0.000   Fa  :   2   GdWo :  54   Othr:   2  
+##  Median :  0.00   Median :  0.000   Gd  :   3   MnPrv: 157   Shed:  49  
+##  Mean   : 15.06   Mean   :  2.759   NA&#39;s:1453   MnWw :  11   TenC:   1  
+##  3rd Qu.:  0.00   3rd Qu.:  0.000               NA&#39;s :1179   NA&#39;s:1406  
+##  Max.   :480.00   Max.   :738.000                                       
+##                                                                         
+##     MiscVal             MoSold           YrSold        SaleType   
+##  Min.   :    0.00   Min.   : 1.000   Min.   :2006   WD     :1267  
+##  1st Qu.:    0.00   1st Qu.: 5.000   1st Qu.:2007   New    : 122  
+##  Median :    0.00   Median : 6.000   Median :2008   COD    :  43  
+##  Mean   :   43.49   Mean   : 6.322   Mean   :2008   ConLD  :   9  
+##  3rd Qu.:    0.00   3rd Qu.: 8.000   3rd Qu.:2009   ConLI  :   5  
+##  Max.   :15500.00   Max.   :12.000   Max.   :2010   ConLw  :   5  
+##                                                     (Other):   9  
+##  SaleCondition    SalePrice     
+##  Abnorml: 101   Min.   : 34900  
+##  AdjLand:   4   1st Qu.:129975  
+##  Alloca :  12   Median :163000  
+##  Family :  20   Mean   :180921  
+##  Normal :1198   3rd Qu.:214000  
+##  Partial: 125   Max.   :755000  
+## </code></pre>
+<p>For the NA’s in the categorical variables we can substitute them for a NO since NA means that the house does not have that feature. Now, lets find out how to impute the NA’s in LotFrontage. We could separate the houses in different categories according to their features and obtain the mean LotFrontage for each category and impute it on the NAs. We can use the variables that have more correlation with LotFrontage.</p>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
