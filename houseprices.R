@@ -6,6 +6,7 @@ library(tidyverse)
 library(tidymodels)
 library(caret)
 library(corrplot)
+library(gridExtra)
 theme_set(theme_bw())
 
 
@@ -104,3 +105,31 @@ summary(house$MasVnrType)
 house$MasVnrArea[is.na(house$MasVnrArea)] <- 0
 
 ## Now the dataset has no more NA's. We can proceed to EDA.
+
+hist(house$SalePrice, breaks = 200) # There are some houses that were sold for more than $650,000
+sum(house$SalePrice > 650000) # Two houses. We can drop these outliers
+boxplot(house$SalePrice)
+
+hist(house$LotArea, breaks = 100) # Are these big houses the expensive ones?
+DT::datatable(filter(house, house$SalePrice > 650000)) # Yes, they are.
+
+
+sl1 <- house %>% 
+  ggplot(aes(LotArea, SalePrice))+
+  geom_point() +
+  geom_smooth(method = "gam")+
+  labs(subtitle = "Complete sample")
+
+sl2 <- house %>% 
+  filter(SalePrice < 650000 & LotArea < 20000) %>% 
+  ggplot(aes(LotArea, SalePrice))+
+  geom_point() +
+  geom_smooth(method = "gam")+
+  labs(subtitle = "Subsetting with price < $650,000 and lot area < 20000 sqrft")
+  
+grid.arrange(sl1, sl2)
+
+## If we consider the complete sample, the model will not capture the effects correctly.
+## As we can see, the data is more concentrated to the left. In this subsample, the effects
+## are non-linear. It is an important feature to consider when fitting a regression.
+

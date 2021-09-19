@@ -14,7 +14,7 @@
 <title>House Prices Prediction</title>
 
 <script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/jquery-3.5.1/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -32,6 +32,14 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/htmlwidgets-1.5.3/htmlwidgets.js"></script>
+<link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+<script src="site_libs/datatables-binding-0.18/datatables.js"></script>
+<link href="site_libs/dt-core-1.10.20/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="site_libs/dt-core-1.10.20/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="site_libs/dt-core-1.10.20/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/crosstalk-1.1.1/css/crosstalk.css" rel="stylesheet" />
+<script src="site_libs/crosstalk-1.1.1/js/crosstalk.min.js"></script>
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -438,66 +446,93 @@ summary(houseprices)</code></pre>
 <pre class="r"><code>sum(is.na(houseprices))</code></pre>
 <pre><code>## [1] 6965</code></pre>
 <p>First thing to notice, according to the variable description, there are several indicator variables that we must transform before perfoming any exploration on the data. Secondly, there are a lot of NA’s for LotFrontage. So lets make the data set readable before. We can convert to factor every indicator variable.</p>
-<pre class="r"><code>houseprices_factors &lt;- houseprices %&gt;% 
-  mutate(MSSubClass = factor(MSSubClass),
-         MSZoning = factor(MSZoning),
-         Street = factor(Street),
-         Alley = factor(Alley),
-         LotShape = factor(LotShape),
-         LandContour = factor(LandContour),
-         Utilities = factor(Utilities),
-         LotConfig = factor(LotConfig),
-         LandSlope = factor(LandSlope),
-         Neighborhood = factor(Neighborhood),
-         Condition1 = factor(Condition1),
-         Condition2 = factor(Condition2),
-         BldgType = factor(BldgType),
-         HouseStyle = factor(HouseStyle),
-         OverallQual = factor(OverallQual),
-         OverallCond = factor(OverallCond),
-         RoofStyle = factor(RoofStyle),
-         RoofMatl = factor(RoofMatl),
-         Exterior1st = factor(Exterior1st),
-         Exterior2nd = factor(Exterior2nd),
-         MasVnrType = factor(MasVnrType),
-         ExterQual = factor(ExterQual),
-         ExterCond = factor(ExterCond),
-         Foundation = factor(Foundation),
-         BsmtQual = factor(BsmtQual),
-         BsmtCond = factor(BsmtCond),
-         BsmtExposure = factor(BsmtExposure),
-         BsmtFinType1 = factor(BsmtFinType1),
-         BsmtFinType2 = factor(BsmtFinType2),
-         Heating = factor(Heating),
-         HeatingQC = factor(HeatingQC),
-         CentralAir = factor(CentralAir),
-         Electrical = factor(Electrical),
-         KitchenQual = factor(KitchenQual),
-         Functional = factor(Functional),
-         FireplaceQu = factor(FireplaceQu),
-         GarageType = factor(GarageType),
-         GarageFinish = factor(GarageFinish),
-         GarageQual = factor(GarageQual),
-         GarageCond = factor(GarageCond),
-         PavedDrive = factor(PavedDrive),
-         PoolQC = factor(PoolQC),
-         Fence = factor(Fence),
-         MiscFeature = factor(MiscFeature),
-         SaleType = factor(SaleType),
-         SaleCondition = factor(SaleCondition))</code></pre>
-<pre class="r"><code>summary(houseprices_factors)</code></pre>
+<pre class="r"><code>house &lt;- houseprices %&gt;% 
+  mutate(MSSubClass = as.factor(MSSubClass),
+         MSZoning = as.factor(MSZoning),
+         Street = as.factor(Street),
+         Alley = as.factor(Alley),
+         LotShape = as.factor(LotShape),
+         LandContour = as.factor(LandContour),
+         Utilities = as.factor(Utilities),
+         LotConfig = as.factor(LotConfig),
+         LandSlope = as.factor(LandSlope),
+         Neighborhood = as.factor(Neighborhood),
+         Condition1 = as.factor(Condition1),
+         Condition2 = as.factor(Condition2),
+         BldgType = as.factor(BldgType),
+         HouseStyle = as.factor(HouseStyle),
+         OverallQual = as.factor(OverallQual),
+         OverallCond = as.factor(OverallCond),
+         RoofStyle = as.factor(RoofStyle),
+         RoofMatl = as.factor(RoofMatl),
+         Exterior1st = as.factor(Exterior1st),
+         Exterior2nd = as.factor(Exterior2nd),
+         MasVnrType = as.factor(MasVnrType),
+         ExterQual = as.factor(ExterQual),
+         ExterCond = as.factor(ExterCond),
+         Foundation = as.factor(Foundation),
+         BsmtQual = as.factor(BsmtQual),
+         BsmtCond = as.factor(BsmtCond),
+         BsmtExposure = as.factor(BsmtExposure),
+         BsmtFinType1 = as.factor(BsmtFinType1),
+         BsmtFinType2 = as.factor(BsmtFinType2),
+         Heating = as.factor(Heating),
+         HeatingQC = as.factor(HeatingQC),
+         CentralAir = as.factor(CentralAir),
+         Electrical = as.factor(Electrical),
+         KitchenQual = as.factor(KitchenQual),
+         Functional = as.factor(Functional),
+         FireplaceQu = as.factor(FireplaceQu),
+         GarageType = as.factor(GarageType),
+         GarageFinish = as.factor(GarageFinish),
+         GarageQual = as.factor(GarageQual),
+         GarageCond = as.factor(GarageCond),
+         PavedDrive = as.factor(PavedDrive),
+         PoolQC = as.factor(PoolQC),
+         Fence = as.factor(Fence),
+         MiscFeature = as.factor(MiscFeature),
+         MoSold = as.factor(MoSold),
+         YrSold = as.factor(YrSold),
+         SaleType = as.factor(SaleType),
+         SaleCondition = as.factor(SaleCondition))
+
+## For LotFrontage we can substitute the NA&#39;s for the mean value
+
+house$LotFrontage[is.na(house$LotFrontage)] &lt;- round(mean(house$LotFrontage, na.rm=TRUE))
+summary(house$LotFrontage)</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   21.00   60.00   70.00   70.04   79.00  313.00</code></pre>
+<pre class="r"><code>## For some variables the NA means None
+
+na_to_none &lt;- function(variables) {
+  variable_char &lt;- as.character(variables)
+  variable_char[is.na(variable_char)] &lt;- &quot;None&quot;
+  variable_fac &lt;- as.factor(variable_char)
+  
+  return(variable_fac)
+}
+
+factor_list &lt;- c(&quot;Alley&quot;,&quot;BsmtQual&quot;, &quot;BsmtCond&quot;, &quot;BsmtExposure&quot;, &quot;BsmtFinType1&quot;, 
+                 &quot;BsmtFinType2&quot;, &quot;Electrical&quot;, &quot;FireplaceQu&quot;,
+                 &quot;GarageType&quot;,&quot;GarageFinish&quot;,&quot;GarageQual&quot;,&quot;GarageCond&quot;,&quot;PoolQC&quot;,
+                 &quot;Fence&quot;,&quot;MiscFeature&quot;)
+
+for (i in factor_list) {
+  house[[i]] &lt;- na_to_none(house[[i]])
+}
+summary(house)</code></pre>
 <pre><code>##        Id           MSSubClass     MSZoning     LotFrontage    
 ##  Min.   :   1.0   20     :536   C (all):  10   Min.   : 21.00  
-##  1st Qu.: 365.8   60     :299   FV     :  65   1st Qu.: 59.00  
-##  Median : 730.5   50     :144   RH     :  16   Median : 69.00  
-##  Mean   : 730.5   120    : 87   RL     :1151   Mean   : 70.05  
-##  3rd Qu.:1095.2   30     : 69   RM     : 218   3rd Qu.: 80.00  
+##  1st Qu.: 365.8   60     :299   FV     :  65   1st Qu.: 60.00  
+##  Median : 730.5   50     :144   RH     :  16   Median : 70.00  
+##  Mean   : 730.5   120    : 87   RL     :1151   Mean   : 70.04  
+##  3rd Qu.:1095.2   30     : 69   RM     : 218   3rd Qu.: 79.00  
 ##  Max.   :1460.0   160    : 63                  Max.   :313.00  
-##                   (Other):262                  NA&#39;s   :259     
+##                   (Other):262                                  
 ##     LotArea        Street      Alley      LotShape  LandContour  Utilities   
 ##  Min.   :  1300   Grvl:   6   Grvl:  50   IR1:484   Bnk:  63    AllPub:1459  
-##  1st Qu.:  7554   Pave:1454   Pave:  41   IR2: 41   HLS:  50    NoSeWa:   1  
-##  Median :  9478               NA&#39;s:1369   IR3: 10   Low:  36                 
+##  1st Qu.:  7554   Pave:1454   None:1369   IR2: 41   HLS:  50    NoSeWa:   1  
+##  Median :  9478               Pave:  41   IR3: 10   Low:  36                 
 ##  Mean   : 10517                           Reg:925   Lvl:1311                 
 ##  3rd Qu.: 11602                                                              
 ##  Max.   :215245                                                              
@@ -530,18 +565,18 @@ summary(houseprices)</code></pre>
 ##  BrkCmn : 15   Min.   :   0.0   Ex: 52    Ex:   3   BrkTil:146   Ex  :121  
 ##  BrkFace:445   1st Qu.:   0.0   Fa: 14    Fa:  28   CBlock:634   Fa  : 35  
 ##  None   :864   Median :   0.0   Gd:488    Gd: 146   PConc :647   Gd  :618  
-##  Stone  :128   Mean   : 103.7   TA:906    Po:   1   Slab  : 24   TA  :649  
-##  NA&#39;s   :  8   3rd Qu.: 166.0             TA:1282   Stone :  6   NA&#39;s: 37  
+##  Stone  :128   Mean   : 103.7   TA:906    Po:   1   Slab  : 24   None: 37  
+##  NA&#39;s   :  8   3rd Qu.: 166.0             TA:1282   Stone :  6   TA  :649  
 ##                Max.   :1600.0                       Wood  :  3             
 ##                NA&#39;s   :8                                                   
 ##  BsmtCond    BsmtExposure BsmtFinType1   BsmtFinSF1     BsmtFinType2
 ##  Fa  :  45   Av  :221     ALQ :220     Min.   :   0.0   ALQ :  19   
 ##  Gd  :  65   Gd  :134     BLQ :148     1st Qu.:   0.0   BLQ :  33   
-##  Po  :   2   Mn  :114     GLQ :418     Median : 383.5   GLQ :  14   
-##  TA  :1311   No  :953     LwQ : 74     Mean   : 443.6   LwQ :  46   
-##  NA&#39;s:  37   NA&#39;s: 38     Rec :133     3rd Qu.: 712.2   Rec :  54   
-##                           Unf :430     Max.   :5644.0   Unf :1256   
-##                           NA&#39;s: 37                      NA&#39;s:  38   
+##  None:  37   Mn  :114     GLQ :418     Median : 383.5   GLQ :  14   
+##  Po  :   2   No  :953     LwQ : 74     Mean   : 443.6   LwQ :  46   
+##  TA  :1311   None: 38     None: 37     3rd Qu.: 712.2   None:  38   
+##                           Rec :133     Max.   :5644.0   Rec :  54   
+##                           Unf :430                      Unf :1256   
 ##    BsmtFinSF2        BsmtUnfSF       TotalBsmtSF      Heating     HeatingQC
 ##  Min.   :   0.00   Min.   :   0.0   Min.   :   0.0   Floor:   1   Ex:741   
 ##  1st Qu.:   0.00   1st Qu.: 223.0   1st Qu.: 795.8   GasA :1428   Fa: 49   
@@ -555,8 +590,8 @@ summary(houseprices)</code></pre>
 ##  Y:1365     FuseF:  27   1st Qu.: 882   1st Qu.:   0   1st Qu.:  0.000  
 ##             FuseP:   3   Median :1087   Median :   0   Median :  0.000  
 ##             Mix  :   1   Mean   :1163   Mean   : 347   Mean   :  5.845  
-##             SBrkr:1334   3rd Qu.:1391   3rd Qu.: 728   3rd Qu.:  0.000  
-##             NA&#39;s :   1   Max.   :4692   Max.   :2065   Max.   :572.000  
+##             None :   1   3rd Qu.:1391   3rd Qu.: 728   3rd Qu.:  0.000  
+##             SBrkr:1334   Max.   :4692   Max.   :2065   Max.   :572.000  
 ##                                                                         
 ##    GrLivArea     BsmtFullBath     BsmtHalfBath        FullBath    
 ##  Min.   : 334   Min.   :0.0000   Min.   :0.00000   Min.   :0.000  
@@ -578,17 +613,17 @@ summary(houseprices)</code></pre>
 ##  Maj1:  14   Min.   :0.000   Ex  : 24    2Types :  6   Min.   :1900  
 ##  Maj2:   5   1st Qu.:0.000   Fa  : 33    Attchd :870   1st Qu.:1961  
 ##  Min1:  31   Median :1.000   Gd  :380    Basment: 19   Median :1980  
-##  Min2:  34   Mean   :0.613   Po  : 20    BuiltIn: 88   Mean   :1979  
-##  Mod :  15   3rd Qu.:1.000   TA  :313    CarPort:  9   3rd Qu.:2002  
-##  Sev :   1   Max.   :3.000   NA&#39;s:690    Detchd :387   Max.   :2010  
-##  Typ :1360                               NA&#39;s   : 81   NA&#39;s   :81    
+##  Min2:  34   Mean   :0.613   None:690    BuiltIn: 88   Mean   :1979  
+##  Mod :  15   3rd Qu.:1.000   Po  : 20    CarPort:  9   3rd Qu.:2002  
+##  Sev :   1   Max.   :3.000   TA  :313    Detchd :387   Max.   :2010  
+##  Typ :1360                               None   : 81   NA&#39;s   :81    
 ##  GarageFinish   GarageCars      GarageArea     GarageQual  GarageCond 
 ##  Fin :352     Min.   :0.000   Min.   :   0.0   Ex  :   3   Ex  :   2  
-##  RFn :422     1st Qu.:1.000   1st Qu.: 334.5   Fa  :  48   Fa  :  35  
-##  Unf :605     Median :2.000   Median : 480.0   Gd  :  14   Gd  :   9  
-##  NA&#39;s: 81     Mean   :1.767   Mean   : 473.0   Po  :   3   Po  :   7  
-##               3rd Qu.:2.000   3rd Qu.: 576.0   TA  :1311   TA  :1326  
-##               Max.   :4.000   Max.   :1418.0   NA&#39;s:  81   NA&#39;s:  81  
+##  None: 81     1st Qu.:1.000   1st Qu.: 334.5   Fa  :  48   Fa  :  35  
+##  RFn :422     Median :2.000   Median : 480.0   Gd  :  14   Gd  :   9  
+##  Unf :605     Mean   :1.767   Mean   : 473.0   None:  81   None:  81  
+##               3rd Qu.:2.000   3rd Qu.: 576.0   Po  :   3   Po  :   7  
+##               Max.   :4.000   Max.   :1418.0   TA  :1311   TA  :1326  
 ##                                                                       
 ##  PavedDrive   WoodDeckSF      OpenPorchSF     EnclosedPorch      3SsnPorch     
 ##  N:  90     Min.   :  0.00   Min.   :  0.00   Min.   :  0.00   Min.   :  0.00  
@@ -600,29 +635,48 @@ summary(houseprices)</code></pre>
 ##                                                                                
 ##   ScreenPorch        PoolArea        PoolQC       Fence      MiscFeature
 ##  Min.   :  0.00   Min.   :  0.000   Ex  :   2   GdPrv:  59   Gar2:   2  
-##  1st Qu.:  0.00   1st Qu.:  0.000   Fa  :   2   GdWo :  54   Othr:   2  
-##  Median :  0.00   Median :  0.000   Gd  :   3   MnPrv: 157   Shed:  49  
-##  Mean   : 15.06   Mean   :  2.759   NA&#39;s:1453   MnWw :  11   TenC:   1  
-##  3rd Qu.:  0.00   3rd Qu.:  0.000               NA&#39;s :1179   NA&#39;s:1406  
+##  1st Qu.:  0.00   1st Qu.:  0.000   Fa  :   2   GdWo :  54   None:1406  
+##  Median :  0.00   Median :  0.000   Gd  :   3   MnPrv: 157   Othr:   2  
+##  Mean   : 15.06   Mean   :  2.759   None:1453   MnWw :  11   Shed:  49  
+##  3rd Qu.:  0.00   3rd Qu.:  0.000               None :1179   TenC:   1  
 ##  Max.   :480.00   Max.   :738.000                                       
 ##                                                                         
-##     MiscVal             MoSold           YrSold        SaleType   
-##  Min.   :    0.00   Min.   : 1.000   Min.   :2006   WD     :1267  
-##  1st Qu.:    0.00   1st Qu.: 5.000   1st Qu.:2007   New    : 122  
-##  Median :    0.00   Median : 6.000   Median :2008   COD    :  43  
-##  Mean   :   43.49   Mean   : 6.322   Mean   :2008   ConLD  :   9  
-##  3rd Qu.:    0.00   3rd Qu.: 8.000   3rd Qu.:2009   ConLI  :   5  
-##  Max.   :15500.00   Max.   :12.000   Max.   :2010   ConLw  :   5  
-##                                                     (Other):   9  
-##  SaleCondition    SalePrice     
-##  Abnorml: 101   Min.   : 34900  
-##  AdjLand:   4   1st Qu.:129975  
-##  Alloca :  12   Median :163000  
-##  Family :  20   Mean   :180921  
-##  Normal :1198   3rd Qu.:214000  
-##  Partial: 125   Max.   :755000  
+##     MiscVal             MoSold     YrSold       SaleType    SaleCondition 
+##  Min.   :    0.00   6      :253   2006:314   WD     :1267   Abnorml: 101  
+##  1st Qu.:    0.00   7      :234   2007:329   New    : 122   AdjLand:   4  
+##  Median :    0.00   5      :204   2008:304   COD    :  43   Alloca :  12  
+##  Mean   :   43.49   4      :141   2009:338   ConLD  :   9   Family :  20  
+##  3rd Qu.:    0.00   8      :122   2010:175   ConLI  :   5   Normal :1198  
+##  Max.   :15500.00   3      :106              ConLw  :   5   Partial: 125  
+##                     (Other):400              (Other):   9                 
+##    SalePrice     
+##  Min.   : 34900  
+##  1st Qu.:129975  
+##  Median :163000  
+##  Mean   :180921  
+##  3rd Qu.:214000  
+##  Max.   :755000  
 ## </code></pre>
-<p>For the NA’s in the categorical variables we can substitute them for a NO since NA means that the house does not have that feature. Now, lets find out how to impute the NA’s in LotFrontage. We could separate the houses in different categories according to their features and obtain the mean LotFrontage for each category and impute it on the NAs. We can use the variables that have more correlation with LotFrontage.</p>
+<pre class="r"><code>colnames(house)[colSums(is.na(house)) &gt; 0]</code></pre>
+<pre><code>## [1] &quot;MasVnrType&quot;  &quot;MasVnrArea&quot;  &quot;GarageYrBlt&quot;</code></pre>
+<pre class="r"><code>## For GarageYrBlt I assume a NA means No garage but we can visualize it 
+garage &lt;- house %&gt;% 
+  select(GarageType, GarageYrBlt)
+  
+DT::datatable(filter(garage, garage$GarageType == &quot;None&quot;))</code></pre>
+<div id="htmlwidget-71cfa55e885224454d53" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-71cfa55e885224454d53">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81"],["None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None","None"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>GarageType<\/th>\n      <th>GarageYrBlt<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":2},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<pre class="r"><code>str(house$GarageYrBlt)</code></pre>
+<pre><code>##  num [1:1460] 2003 1976 2001 1998 2000 ...</code></pre>
+<pre class="r"><code>house$GarageYrBlt[is.na(house$GarageYrBlt)] &lt;- 0
+## For MasVnrType we can do substitute the Na&#39;s by nones and for the area by 0&#39;s
+house$MasVnrType[is.na(house$MasVnrType)] &lt;- &quot;None&quot;
+summary(house$MasVnrType)</code></pre>
+<pre><code>##  BrkCmn BrkFace    None   Stone 
+##      15     445     872     128</code></pre>
+<pre class="r"><code>house$MasVnrArea[is.na(house$MasVnrArea)] &lt;- 0
+
+## Now the dataset has no more NA&#39;s. We can proceed to EDA.</code></pre>
 
 
 
