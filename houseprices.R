@@ -274,5 +274,7 @@ num_house <- as.data.frame(num_house)
 
 corrhouse <- cor(saleprice, num_house)
 corrhouse <- as.data.frame(corrhouse)
-ggcorrplot(as.data.frame(as.matrix(corrhouse)), lab =TRUE)
+
+ggcorrplot(as.data.frame(as.matrix(corrhouse)), lab =TRUE, lab_size = 2.5,
+           title = "Correlation Sale Price vs other numerical")
 
