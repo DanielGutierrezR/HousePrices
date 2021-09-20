@@ -7,6 +7,7 @@ library(tidymodels)
 library(caret)
 library(corrplot)
 library(gridExtra)
+library(ggcorrplot)
 theme_set(theme_bw())
 
 
@@ -98,6 +99,7 @@ DT::datatable(filter(garage, garage$GarageType == "None"))
 str(house$GarageYrBlt)
 
 house$GarageYrBlt[is.na(house$GarageYrBlt)] <- 0
+
 ## For MasVnrType we can do substitute the Na's by nones and for the area by 0's
 house$MasVnrType[is.na(house$MasVnrType)] <- "None"
 summary(house$MasVnrType)
@@ -116,14 +118,14 @@ DT::datatable(filter(house, house$SalePrice > 650000)) # Yes, they are.
 
 sl1 <- house %>% 
   ggplot(aes(LotArea, SalePrice))+
-  geom_point() +
+  geom_point(alpha = 0.3) +
   geom_smooth(method = "gam")+
   labs(subtitle = "Complete sample")
 
 sl2 <- house %>% 
   filter(SalePrice < 650000 & LotArea < 20000) %>% 
   ggplot(aes(LotArea, SalePrice))+
-  geom_point() +
+  geom_point(alpha = 0.3) +
   geom_smooth(method = "gam")+
   labs(subtitle = "Subsetting with price < $650,000 and lot area < 20000 sqrft")
   
@@ -138,94 +140,119 @@ plot(house$MSZoning) ## This seems like a problem
 table(house$MSZoning) ## C and RH are less than 20 observations. There is not enough data for the zones.
 
 ## Area
-house %>% 
+zone <- house %>% 
   ggplot(aes(SalePrice, fill = MSZoning)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Zone")
 
-plot(house$Neighborhood)
+neighborhood <- plot(house$Neighborhood)
 house %>% 
   ggplot(aes(SalePrice, fill = Neighborhood)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
-
+  coord_flip() +
+  labs(subtitle = "Neighborhood")
+grid.arrange(zone, neighborhood)
 ## Features of the house
-house %>% 
+msssubclass <- house %>% 
   ggplot(aes(SalePrice, fill = MSSubClass)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Type of dwelling involved in the sale")
+
 ## Houses built in 1946 and newer(Groups: 20, 60, 120) were sold at a higher price than older.
 ## Among those, 2-story houses(60) are the more expensive. 
-house %>% 
+
+lotshape <- house %>% 
   ggplot(aes(SalePrice, fill = LotShape)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Lot Shape")
 
-house %>% 
+condition1 <- house %>% 
   ggplot(aes(SalePrice, fill = Condition1)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
-house %>% 
+  coord_flip() +
+  labs(subtitle = "Condition 1")
+condition2 <- house %>% 
   ggplot(aes(SalePrice, fill = Condition2)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Condition 2")
 
 
-house %>% 
+housestyle <- house %>% 
   ggplot(aes(SalePrice, fill = HouseStyle)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Style of dwelling")
 
-house %>% 
+grid.arrange(lotshape, condition1, condition2, housestyle) # Graph features
+
+overallqual <- house %>% 
   ggplot(aes(SalePrice, fill = OverallQual)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Rates the overall material and finish of the house")
+  
 
-house %>% 
+overallcond <- house %>% 
   ggplot(aes(SalePrice, fill = OverallCond)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Rates the overall condition of the house")
 
-house %>% 
-  ggplot(aes(SalePrice, fill = as.factor(FullBath))) +
-  geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
-
-house %>% 
+extercond <- house %>% 
   ggplot(aes(SalePrice, fill = ExterCond)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Evaluates the present condition of the material on the exterior")
 
-house %>% 
+grid.arrange(overallqual, overallcond, extercond) # Condition of the house
+
+baths <- house %>% 
+  ggplot(aes(SalePrice, fill = as.factor(FullBath))) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Number of full bathrooms")
+
+bedroom <- house %>% 
   ggplot(aes(SalePrice, fill = as.factor(BedroomAbvGr))) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
-
-house %>% 
+  coord_flip()+
+  labs(subtitle = "Bedrooms above grade")
+  
+garagety <- house %>% 
   ggplot(aes(SalePrice, fill = GarageType)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip()+
+  labs(subtitle = "Garage type")
 
-house %>% 
+pool <- house %>% 
   ggplot(aes(SalePrice, fill = PoolQC)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Pool quality")
 
+grid.arrange(baths, bedroom, garagety, pool) #Features 2 in the house
 
-house %>% 
+yrsold <- house %>% 
   ggplot(aes(SalePrice, fill = YrSold)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
-
-house %>% 
+  coord_flip() 
+  
+mosold <- house %>% 
   ggplot(aes(SalePrice, fill = MoSold)) +
   geom_boxplot(outlier.alpha =0.5) +
   coord_flip()
 
-house %>% 
+salecond <- house %>% 
   ggplot(aes(SalePrice, fill = SaleCondition)) +
   geom_boxplot(outlier.alpha =0.5) +
-  coord_flip()
+  coord_flip() +
+  labs(subtitle = "Condition of sale")
+
+grid.arrange(yrsold, mosold, salecond) # Conditions at the moment of sale
 
 house %>% 
   filter(SalePrice < 650000 & LotArea < 20000) %>% 
@@ -233,3 +260,19 @@ house %>%
   geom_point() +
   geom_smooth(method = "gam")+
   coord_flip()
+
+# Plotting the correlation of SalePrice with the numerical variables
+
+house$stFlrSF <- house$`1stFlrSF`
+house$ndFlrSF <- house$`2ndFlrSF`
+house$SsnPorch <- house$`3SsnPorch`
+
+num_house <- house %>% 
+  select(LotFrontage,  LotArea,  YearBuilt,  YearRemodAdd,  MasVnrArea,  BsmtFinSF1, BsmtFinSF2, BsmtUnfSF,  TotalBsmtSF,  stFlrSF,  ndFlrSF,  LowQualFinSF,  GrLivArea,  BsmtFullBath,  BsmtHalfBath, FullBath,  HalfBath,  BedroomAbvGr,  KitchenAbvGr,  TotRmsAbvGrd,  Fireplaces,  GarageYrBlt,  GarageCars,  GarageArea,  WoodDeckSF,  OpenPorchSF,  EnclosedPorch, SsnPorch,  ScreenPorch,  PoolArea,  MiscVal)
+saleprice <- house$SalePrice
+num_house <- as.data.frame(num_house)
+
+corrhouse <- cor(saleprice, num_house)
+corrhouse <- as.data.frame(corrhouse)
+ggcorrplot(as.data.frame(as.matrix(corrhouse)), lab =TRUE)
+
