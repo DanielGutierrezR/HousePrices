@@ -384,7 +384,7 @@ house_train %>%
 # Still good
 # RMSE?
 rmse <- function(error) {
-  se = e^2
+  se = error^2
   mse = mean(se)
   rmse = sqrt(mse)
   return(rmse)
@@ -400,4 +400,3 @@ house_test %>%
   geom_smooth()
 error2 <- house_test$SalePrice - house_test$predict
 rmse(error2)
-error1 
