@@ -357,10 +357,10 @@ house_ready <- house %>%
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2)
 summary(house_ready)
-summary(lm(SalePrice~. - Id, data = house_ready))
+linear1 <- lm(SalePrice~. - Id, data = house_ready)
 
 
-house_ready$predict <- predict(lm(SalePrice~. - Id, data = house_ready))
+house_ready$predict <- predict(linear1)
 house_ready %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point()
@@ -373,7 +373,9 @@ house_split <- house_ready %>%
 house_train <- training(house_split)
 house_test <- testing(house_split)
 
-house_train$predict <- predict(lm(SalePrice~. - Id, data = house_train))
+linear2 <- lm(SalePrice~. - Id - RoofMatl, data = house_train)
+
+house_train$predict <- predict(linear2)
 house_train %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point() +
@@ -381,7 +383,20 @@ house_train %>%
 
 # Still good
 # RMSE?
-house_test$predict <- predict(lm(SalePrice~. - Id, data = house_test))
+rmse <- function(error) {
+  se = e^2
+  mse = mean(se)
+  rmse = sqrt(mse)
+  return(rmse)
+}
+
+error1 <- house_train$SalePrice - house_train$predict 
+rmse(error1)
+
+house_test$predict <- predict(linear2, newdata = house_test)
 house_test %>% 
   ggplot(aes(predict, SalePrice)) +
-  geom_point()
+  geom_point() +
+  geom_smooth()
+error2 <- house_test$SalePrice - house_test$predict
+rmse(error2)
