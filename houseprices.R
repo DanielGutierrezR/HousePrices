@@ -147,12 +147,15 @@ zone <- house %>%
   labs(subtitle = "Zone")
 
 neighborhood <- plot(house$Neighborhood)
-house %>% 
+neighborhood <- house %>% 
   ggplot(aes(SalePrice, fill = Neighborhood)) +
   geom_boxplot(outlier.alpha =0.5) +
   coord_flip() +
   labs(subtitle = "Neighborhood")
+
 grid.arrange(zone, neighborhood)
+## Both seem to affect the saleprice
+
 ## Features of the house
 msssubclass <- house %>% 
   ggplot(aes(SalePrice, fill = MSSubClass)) +
@@ -188,6 +191,7 @@ housestyle <- house %>%
   labs(subtitle = "Style of dwelling")
 
 grid.arrange(lotshape, condition1, condition2, housestyle) # Graph features
+## Lot Shape seems to not affect the saleprice
 
 overallqual <- house %>% 
   ggplot(aes(SalePrice, fill = OverallQual)) +
@@ -209,9 +213,10 @@ extercond <- house %>%
   labs(subtitle = "Evaluates the present condition of the material on the exterior")
 
 grid.arrange(overallqual, overallcond, extercond) # Condition of the house
+#The median values of ExterCond seem equal.
 
 baths <- house %>% 
-  ggplot(aes(SalePrice, fill = as.factor(FullBath))) +
+  ggplot(aes(SalePrice, fill = as.factor(Baths))) +
   geom_boxplot(outlier.alpha =0.5) +
   coord_flip() +
   labs(subtitle = "Number of full bathrooms")
@@ -253,6 +258,64 @@ salecond <- house %>%
   labs(subtitle = "Condition of sale")
 
 grid.arrange(yrsold, mosold, salecond) # Conditions at the moment of sale
+## All matter, special attention to Baths.
+
+heating <- house %>% 
+  ggplot(aes(SalePrice, fill = Heating)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Heating")
+
+heatingQual <- house %>% 
+  ggplot(aes(SalePrice, fill = HeatingQC)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Heating Quality")
+
+centralair <- house %>% 
+  ggplot(aes(SalePrice, fill = CentralAir)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Central Air")
+
+electricalsystem <- house %>% 
+  ggplot(aes(SalePrice, fill = Electrical)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Electrical system")
+
+foundation <- house %>% 
+  ggplot(aes(SalePrice, fill = Foundation)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Foundation")
+
+landcontour <- house %>% 
+  ggplot(aes(SalePrice, fill = LandContour)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Land Contour")
+
+garagecars <- house %>% 
+  ggplot(aes(SalePrice, fill = as.factor(GarageCars))) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Garage Cars")
+
+fence <- house %>% 
+  ggplot(aes(SalePrice, fill = Fence)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Fence")
+
+miscfeature <- house %>% 
+  ggplot(aes(SalePrice, fill = MiscFeature)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Miscellaneous feature not covered in other categories")
+
+grid.arrange(heating, heatingQual, centralair, electricalsystem, foundation, landcontour, garagecars,
+             fence, miscfeature)
 
 house %>% 
   filter(SalePrice < 650000 & LotArea < 20000) %>% 
@@ -280,4 +343,45 @@ ggcorrplot(as.data.frame(as.matrix(corrhouse)), lab =TRUE, lab_size = 2.5,
 
 # Only Garage Area, Garage Cars, Fireplaces, TotRmsAbvGr, Full Bath, GrLiveArea, stFlrSf, TotalBsmtSf
 # And maybe YearRemodAdd and YearBuilt might be considered for analysis7
-# We could also add Halfbath and Bath together to get a better perspective of bathrooms.
+# We could also add  all Halfbath and Bath together to get a better perspective of bathrooms.
+
+house <- house %>% 
+  mutate(Baths = 0.5*(HalfBath) + FullBath + 0.5*(BsmtHalfBath) + BsmtFullBath)
+
+cor(house$SalePrice, house$Baths)
+# Baths look good.
+
+## Adding variables that seems to affect SalePrice
+house_ready <- house %>% 
+  select(-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
+         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
+         -BsmtUnfSF, -BsmtFinSF2)
+summary(house_ready)
+summary(lm(SalePrice~. - Id, data = house_ready))
+
+
+house_ready$predict <- predict(lm(SalePrice~. - Id, data = house_ready))
+house_ready %>% 
+  ggplot(aes(predict, SalePrice)) +
+  geom_point()
+# The model looks good using only data that it has seen. Now lets try splitting the data set
+
+
+set.seed(1234)
+house_split <- house_ready %>% 
+  initial_split(strata = Utilities)
+house_train <- training(house_split)
+house_test <- testing(house_split)
+
+house_train$predict <- predict(lm(SalePrice~. - Id, data = house_train))
+house_train %>% 
+  ggplot(aes(predict, SalePrice)) +
+  geom_point() +
+  geom_smooth()
+
+# Still good
+# RMSE?
+house_test$predict <- predict(lm(SalePrice~. - Id, data = house_test))
+house_test %>% 
+  ggplot(aes(predict, SalePrice)) +
+  geom_point()
