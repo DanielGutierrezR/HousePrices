@@ -278,3 +278,6 @@ corrhouse <- as.data.frame(corrhouse)
 ggcorrplot(as.data.frame(as.matrix(corrhouse)), lab =TRUE, lab_size = 2.5,
            title = "Correlation Sale Price vs other numerical")
 
+# Only Garage Area, Garage Cars, Fireplaces, TotRmsAbvGr, Full Bath, GrLiveArea, stFlrSf, TotalBsmtSf
+# And maybe YearRemodAdd and YearBuilt might be considered for analysis7
+# We could also add Halfbath and Bath together to get a better perspective of bathrooms.
