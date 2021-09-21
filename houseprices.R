@@ -8,6 +8,7 @@ library(caret)
 library(corrplot)
 library(gridExtra)
 library(ggcorrplot)
+library(mgcv)
 theme_set(theme_bw())
 
 
@@ -355,7 +356,8 @@ cor(house$SalePrice, house$Baths)
 house_ready <- house %>% 
   select(-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
-         -BsmtUnfSF, -BsmtFinSF2)
+         -BsmtUnfSF, -BsmtFinSF2) %>% 
+  filter(SalePrice < 600000) 
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
 
@@ -375,7 +377,7 @@ house_test <- testing(house_split)
 
 linear2 <- lm(SalePrice~. - Id - RoofMatl, data = house_train)
 
-house_train$predict <- predict(linear2)
+predict_trainlm <- predict(linear2)
 house_train %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point() +
@@ -383,20 +385,49 @@ house_train %>%
 
 # Still good
 # RMSE?
-rmse <- function(error) {
+rmse <- function(actual,predicted) {
+  error = actual - predicted
   se = error^2
   mse = mean(se)
   rmse = sqrt(mse)
   return(rmse)
 }
 
-error1 <- house_train$SalePrice - house_train$predict 
-rmse(error1)
 
-house_test$predict <- predict(linear2, newdata = house_test)
+rmse(house_train$SalePrice, house_train$predict)
+
+predict_testlm <- predict(linear2, newdata = house_test)
 house_test %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point() +
   geom_smooth()
-error2 <- house_test$SalePrice - house_test$predict
-rmse(error2)
+
+rmse(house_test$SalePrice, house_test$predict)
+
+## Now lets fit an additive model
+df1 <- c("MSZoning", "Neighborhood", "MSSubClass", "Condition1", "Condition2", "HouseStyle", "OverallQual",
+         "OverallCond", "FullBath", "ExterCond", "GarageType", "PoolQC", "YrSold", "MoSold", "SaleCondition", 
+         "Fireplaces", "BsmtFullBath", "BsmtHalfBath", "HalfBath", "GarageCars")
+df2 <- c("YearBuilt", "LotFrontage", "LotArea", "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", 
+          "TotalBsmtSF", "stFlrSF","GrLivArea", 
+         "TotRmsAbvGrd", "GarageArea")
+
+var1 <- paste(df1, collapse=" + ")
+var2 <- paste('s(', df2[-1], ')', sep = "", collapse = ' + ')
+
+fm <- as.formula(paste("SalePrice ~", var1, "+", var2))
+spline1 <- gam(fm, data = house_train)
+predict_trainspline <- predict(spline1)
+
+predict_testspline <- predict(spline1, newdata = house_test)
+rmse(house_train$SalePrice,house_train$predicted_spline)
+house_train %>% 
+  ggplot(aes(predicted_spline, SalePrice)) +
+  geom_point() +
+  geom_smooth()
+
+rmse(house_test$SalePrice,house_test$predicted_spline)
+house_test %>% 
+  ggplot(aes(predicted_spline, SalePrice)) +
+  geom_point() +
+  geom_smooth()
