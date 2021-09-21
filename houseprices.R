@@ -431,3 +431,34 @@ house_test %>%
   ggplot(aes(predicted_spline, SalePrice)) +
   geom_point() +
   geom_smooth()
+
+## Random Forest
+
+rf_spec <- rand_forest(mode = "regression") %>% 
+  set_engine("ranger")
+
+rf_spec
+
+rf_fit <- rf_spec %>% 
+  fit(SalePrice ~ .,
+      data = house_train)
+
+rf_fit
+house_train$predict_rf <- predict(rf_fit)
+
+result_train <- rf_fit %>% 
+  predict(new_data = house_train) %>% 
+  mutate(actual = house_train$SalePrice)
+
+result_train %>% 
+  ggplot(aes(.pred, actual))+
+  geom_point()
+rmse(result_train$actual, result_train$.pred)
+
+result_test <- rf_fit %>% 
+  predict(new_data = house_test) %>% 
+  mutate(actual = house_test$SalePrice)
+result_test %>% 
+  ggplot(aes(.pred, actual))+
+  geom_point()
+rmse(result_test$actual, result_test$.pred)
