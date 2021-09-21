@@ -356,8 +356,9 @@ cor(house$SalePrice, house$Baths)
 house_ready <- house %>% 
   select(-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
-         -BsmtUnfSF, -BsmtFinSF2) %>% 
-  filter(SalePrice < 600000) 
+         -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
+         `2ndFlrSF`)
+
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
 
@@ -375,7 +376,7 @@ house_split <- house_ready %>%
 house_train <- training(house_split)
 house_test <- testing(house_split)
 
-linear2 <- lm(SalePrice~. - Id - RoofMatl, data = house_train)
+linear2 <- lm(SalePrice~. - Id - Street - CentralAir, data = house_train)
 
 predict_trainlm <- predict(linear2)
 house_train %>% 
@@ -406,8 +407,8 @@ rmse(house_test$SalePrice, house_test$predict)
 
 ## Now lets fit an additive model
 df1 <- c("MSZoning", "Neighborhood", "MSSubClass", "Condition1", "Condition2", "HouseStyle", "OverallQual",
-         "OverallCond", "FullBath", "ExterCond", "GarageType", "PoolQC", "YrSold", "MoSold", "SaleCondition", 
-         "Fireplaces", "BsmtFullBath", "BsmtHalfBath", "HalfBath", "GarageCars")
+         "OverallCond", "ExterCond", "GarageType", "PoolQC", "YrSold", "MoSold", "SaleCondition", 
+         "Fireplaces", "GarageCars", "Baths")
 df2 <- c("YearBuilt", "LotFrontage", "LotArea", "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", 
           "TotalBsmtSF", "stFlrSF","GrLivArea", 
          "TotRmsAbvGrd", "GarageArea")
@@ -440,7 +441,7 @@ rf_spec <- rand_forest(mode = "regression") %>%
 rf_spec
 
 rf_fit <- rf_spec %>% 
-  fit(SalePrice ~ .,
+  fit(SalePrice ~ . - Id -predict,
       data = house_train)
 
 rf_fit
@@ -462,3 +463,48 @@ result_test %>%
   ggplot(aes(.pred, actual))+
   geom_point()
 rmse(result_test$actual, result_test$.pred)
+
+### RMSE for tets too high. Lets use cv
+
+house_folds <- vfold_cv(house_train, strata = Utilities) # This divides our house_train in 10 parts
+
+rf_res <- fit_resamples(
+  rf_spec, #The specification
+  SalePrice ~ . - Id - predict,
+  house_folds, #Resamples
+  control = control_resamples(save_pred = TRUE) #To fine tune the resampling process
+)
+
+rf_res %>% 
+  collect_metrics()
+
+rf_res %>% 
+  unnest(.predictions) %>% 
+  ggplot(aes(SalePrice, .pred, color = id)) +
+  geom_abline(lty = 2, color = "black", size = 1) +
+  geom_point(alpha = 0.5)
+
+lm_spec <- linear_reg () %>% 
+  set_engine( engine ="lm")
+
+lm_spec
+
+lm_fit <- lm_spec %>% 
+  fit(SalePrice ~ . -Id - predict,
+      data = house_train)
+lm_fit 
+
+lm_res <- fit_resamples(
+  lm_spec, #The specification
+  SalePrice ~ . -Id - predict,
+  house_folds, #Resamples
+  control = control_resamples(save_pred = TRUE) #To fine tune the resampling process
+)
+
+lm_res %>% 
+  collect_metrics()
+lm_res %>% 
+  unnest(.predictions) %>% 
+  ggplot(aes(SalePrice, .pred, color = id)) +
+  geom_abline(lty = 2, color = "black", size = 1) +
+  geom_point(alpha = 0.5)
