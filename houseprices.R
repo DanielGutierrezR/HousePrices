@@ -15,7 +15,7 @@ theme_set(theme_bw())
 ## Identifying categories in indicator variables
 
 house <- houseprices %>% 
-  mutate(MSSubClass = as.factor(MSSubClass),
+  mutate(
          MSZoning = as.factor(MSZoning),
          Street = as.factor(Street),
          Alley = as.factor(Alley),
@@ -258,6 +258,12 @@ salecond <- house %>%
   coord_flip() +
   labs(subtitle = "Condition of sale")
 
+house %>% 
+  ggplot(aes(SalePrice, fill = Utilities)) +
+  geom_boxplot(outlier.alpha =0.5) +
+  coord_flip() +
+  labs(subtitle = "Condition of sale")
+
 grid.arrange(yrsold, mosold, salecond) # Conditions at the moment of sale
 ## All matter, special attention to Baths.
 
@@ -354,10 +360,10 @@ cor(house$SalePrice, house$Baths)
 
 ## Adding variables that seems to affect SalePrice
 house_ready <- house %>% 
-  select(-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
+  select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
-         `2ndFlrSF`)
+         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`)
 
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
@@ -508,3 +514,135 @@ lm_res %>%
   ggplot(aes(SalePrice, .pred, color = id)) +
   geom_abline(lty = 2, color = "black", size = 1) +
   geom_point(alpha = 0.5)
+
+
+
+### Preparing test data
+test <- readr::read_csv("test.csv")
+
+house_test <- test %>% 
+  mutate(
+         MSZoning = as.factor(MSZoning),
+         Street = as.factor(Street),
+         Alley = as.factor(Alley),
+         LotShape = as.factor(LotShape),
+         LandContour = as.factor(LandContour),
+         Utilities = as.factor(Utilities),
+         LotConfig = as.factor(LotConfig),
+         LandSlope = as.factor(LandSlope),
+         Neighborhood = as.factor(Neighborhood),
+         Condition1 = as.factor(Condition1),
+         Condition2 = as.factor(Condition2),
+         BldgType = as.factor(BldgType),
+         HouseStyle = as.factor(HouseStyle),
+         OverallQual = as.factor(OverallQual),
+         OverallCond = as.factor(OverallCond),
+         RoofStyle = as.factor(RoofStyle),
+         RoofMatl = as.factor(RoofMatl),
+         Exterior1st = as.factor(Exterior1st),
+         Exterior2nd = as.factor(Exterior2nd),
+         MasVnrType = as.factor(MasVnrType),
+         ExterQual = as.factor(ExterQual),
+         ExterCond = as.factor(ExterCond),
+         Foundation = as.factor(Foundation),
+         BsmtQual = as.factor(BsmtQual),
+         BsmtCond = as.factor(BsmtCond),
+         BsmtExposure = as.factor(BsmtExposure),
+         BsmtFinType1 = as.factor(BsmtFinType1),
+         BsmtFinType2 = as.factor(BsmtFinType2),
+         Heating = as.factor(Heating),
+         HeatingQC = as.factor(HeatingQC),
+         CentralAir = as.factor(CentralAir),
+         Electrical = as.factor(Electrical),
+         KitchenQual = as.factor(KitchenQual),
+         Functional = as.factor(Functional),
+         FireplaceQu = as.factor(FireplaceQu),
+         GarageType = as.factor(GarageType),
+         GarageFinish = as.factor(GarageFinish),
+         GarageQual = as.factor(GarageQual),
+         GarageCond = as.factor(GarageCond),
+         PavedDrive = as.factor(PavedDrive),
+         PoolQC = as.factor(PoolQC),
+         Fence = as.factor(Fence),
+         MiscFeature = as.factor(MiscFeature),
+         MoSold = as.factor(MoSold),
+         YrSold = as.factor(YrSold),
+         SaleType = as.factor(SaleType),
+         SaleCondition = as.factor(SaleCondition))
+house_test$LotFrontage[is.na(house_test$LotFrontage)] <- round(mean(house_test$LotFrontage, na.rm=TRUE))
+summary(house_test$LotFrontage)
+
+house_test$MSSubClass <- ifelse(house_test_ready$MSSubClass == 150, 120, house_test_ready$MSSubClass)
+summary(house_test$MSSubClass)
+
+for (i in factor_list) {
+  house_test[[i]] <- na_to_none(house_test[[i]])
+}
+summary(house_test)
+
+colnames(house_test)[colSums(is.na(house_test)) > 0]
+
+## For GarageYrBlt I assume a NA means No garage but we can visualize it 
+garage <- house_test %>% 
+  select(GarageType, GarageYrBlt)
+
+DT::datatable(filter(garage, garage$GarageType == "None"))
+str(house_test$GarageYrBlt)
+
+house_test$GarageYrBlt[is.na(house_test$GarageYrBlt)] <- 0
+
+## For MasVnrType we can do substitute the Na's by nones and for the area by 0's
+house_test$MasVnrType[is.na(house_test$MasVnrType)] <- "None"
+summary(house_test$MasVnrType)
+
+house_test$MasVnrArea[is.na(house_test$MasVnrArea)] <- 0
+
+colnames(house_test)[colSums(is.na(house_test)) > 0]
+
+## For MSZoning we use the most common zone RL
+house_test$MSZoning[is.na(house_test$MSZoning)] <- "RL"
+
+## Utilities is problematic. I think AllPub is the best solution 
+summary(house_test$Utilities)
+
+## Creating the Baths variables so we can remove all of the others.
+house_test <- house_test %>% 
+  mutate(Baths = 0.5*(HalfBath) + FullBath + 0.5*(BsmtHalfBath) + BsmtFullBath)
+
+## Also we will remove all the Area variables and keep only totalarea.
+
+## For Sale Type its only one observation missing so we can substitute it 
+## with the most common WD
+house_test$SaleType[is.na(house_test$SaleType)] <- "WD"
+
+## Same with Functional and the rest of the categorical variables
+house_test$Functional[is.na(house_test$Functional)] <- "Typ"
+house_test$Exterior1st[is.na(house_test$Exterior1st)] <- "VinylSd"
+house_test$Exterior2nd[is.na(house_test$Exterior2nd)] <- "VinylSd"
+house_test$KitchenQual[is.na(house_test$KitchenQual)] <- "TA"
+
+
+## For the numerical we substitute them for the mean or median value
+house_test$BsmtFinSF1[is.na(house_test$BsmtFinSF1)] <- round(mean(house_test$BsmtFinSF1, na.rm=TRUE))
+house_test$Baths[is.na(house_test$Baths)] <- median(house_test$Baths, na.rm=TRUE)
+house_test$TotalBsmtSF[is.na(house_test$TotalBsmtSF)] <- round(mean(house_test$TotalBsmtSF, na.rm=TRUE))
+house_test$GarageCars[is.na(house_test$GarageCars)] <- median(house_test$GarageCars, na.rm=TRUE)
+
+house_test$stFlrSF <- house_test$`1stFlrSF`
+house_test$ndFlrSF <- house_test$`2ndFlrSF`
+house_test$SsnPorch <- house_test$`3SsnPorch`
+
+house_test_ready <- house_test %>% 
+  select(-MSSubClass, -LotShape, -MiscVal, -PoolArea, -ScreenPorch, - `3SsnPorch`, -EnclosedPorch, -OpenPorchSF,
+         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF,
+         -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
+         `2ndFlrSF`, - GarageArea, -Utilities)
+sum(is.na(house_test_ready))
+
+house_test_ready$MSSubClass <- ifelse(house_test_ready$MSSubClass == 150, 120, house_test_ready$MSSubClass)
+house_test_ready$prediction_lm1 <- predict(linear1, newdata = house_test_ready)
+submission_lm1 <- house_test_ready %>% 
+  rename(SalePrice = prediction_lm1) %>% 
+  select(Id, SalePrice) 
+write.csv(submission_lm1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_lm1.csv",
+          row.names = FALSE)
