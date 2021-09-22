@@ -530,6 +530,12 @@ library(caret)
 library(plyr)
 library(xgboost)
 library(Metrics)
+set.seed(45)
+house_split <- house_ready %>% 
+  initial_split()
+house_train <- training(house_split)
+house_test <- testing(house_split)
+
 house_train <- training(house_split)
 house_test <- testing(house_split)
 
@@ -546,7 +552,6 @@ grid = expand.grid(nrounds=c(100, 200, 400),     # 3 different amounts of boosti
                    min_child_weight = c(1),
                    subsample=0.7)
 
-set.seed(1234)
 xgb =  train(SalePrice~. - Id,      
              data=house_train,
              method="xgbTree",
@@ -699,3 +704,10 @@ submission_lm1 <- house_test_ready %>%
   select(Id, SalePrice) 
 write.csv(submission_lm1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_lm1.csv",
           row.names = FALSE)
+
+
+house_test_ready$prediction_xgb1 <- predict(xgb, newdata = house_test_ready)
+submission_xgb1 <- house_test_ready %>% 
+  select(Id, prediction_xgb1)
+names(submission_xgb1)[2] <- "SalePrice" 
+write.csv(submission_xgb1, "C:/Users/OEM/OneDrive/Desktop/R/Dani/submission_xgb1.csv",row.names = FALSE)
