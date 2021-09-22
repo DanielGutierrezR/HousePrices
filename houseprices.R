@@ -2,6 +2,8 @@ setwd("C:/Users/Daniel Gutierrez/Desktop/R Practice/House Prices")
 houseprices <- readr::read_csv("train.csv")
 summary(houseprices)
 
+#yoyo
+
 library(tidyverse)
 library(tidymodels)
 library(caret)
