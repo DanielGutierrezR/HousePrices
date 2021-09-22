@@ -524,6 +524,50 @@ lm_res %>%
   geom_point(alpha = 0.5)
 
 
+#############################################################
+#xgBoost
+library(caret)
+library(plyr)
+library(xgboost)
+library(Metrics)
+house_train <- training(house_split)
+house_test <- testing(house_split)
+
+control = trainControl(method = "cv",  # cross validation
+                       number = 10)     # 5-folds
+
+
+# Create grid of tuning parameters
+grid = expand.grid(nrounds=c(100, 200, 400),     # 3 different amounts of boosting rounds
+                   max_depth= c(4, 6),           # 2 values for tree depth
+                   eta=c(0.1, 0.05, 0.025),      # 3 values for learning rate
+                   gamma= c(0.1), 
+                   colsample_bytree = c(1), 
+                   min_child_weight = c(1),
+                   subsample=0.7)
+
+set.seed(1234)
+xgb =  train(SalePrice~. - Id,      
+             data=house_train,
+             method="xgbTree",
+             trControl=control, 
+             tuneGrid=grid,
+             maximize = FALSE)
+
+xgb$results
+xgb$bestTune
+varImp(xgb)
+
+house_train$predict_boost <- predict(xgb, new_data = house_train)
+test_predictions = predict(xgb, newdata=house_test)
+house_test$predict_boost <- test_predictions
+
+rmse(house_train$SalePrice, house_train$predict_boost)
+rmse(house_test$SalePrice, house_test$predict_boost)
+rmsle(house_train$SalePrice, house_train$predict_boost)
+rmsle(house_test$SalePrice, house_test$predict_boost)
+
+
 
 ### Preparing test data
 test <- readr::read_csv("test.csv")
