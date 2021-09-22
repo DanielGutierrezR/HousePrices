@@ -360,6 +360,7 @@ cor(house$SalePrice, house$Baths)
 
 ## Adding variables that seems to affect SalePrice
 house_ready <- house %>% 
+  filter(SalePrice < 600000) %>% 
   select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
@@ -376,16 +377,17 @@ house_ready$predict <- predict(linear1)
 house_ready %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point()
+
 # The model looks good using only data that it has seen. Now lets try splitting the data set
 
 
 set.seed(1234)
 house_split <- house_ready %>% 
-  initial_split(strata = Utilities)
+  initial_split()
 house_train <- training(house_split)
 house_test <- testing(house_split)
 
-linear2 <- lm(SalePrice~. - Id - Street - CentralAir, data = house_train)
+linear2 <- lm(SalePrice~. - Id - predict, data = house_train)
 
 predict_trainlm <- predict(linear2)
 house_train %>% 
@@ -450,11 +452,10 @@ rf_spec <- rand_forest(mode = "regression") %>%
 rf_spec
 
 rf_fit <- rf_spec %>% 
-  fit(SalePrice ~ . - Id -predict,
+  fit(SalePrice ~ . - Id,
       data = house_train)
 
 rf_fit
-house_train$predict_rf <- predict(rf_fit)
 
 result_train <- rf_fit %>% 
   predict(new_data = house_train) %>% 
@@ -471,15 +472,17 @@ result_test <- rf_fit %>%
 result_test %>% 
   ggplot(aes(.pred, actual))+
   geom_point()
+
+rmse(result_train$actual, result_train$.pred)
 rmse(result_test$actual, result_test$.pred)
 
 ### RMSE for tets too high. Lets use cv
 
-house_folds <- vfold_cv(house_train, strata = Utilities) # This divides our house_train in 10 parts
+house_folds <- vfold_cv(house_train) # This divides our house_train in 10 parts
 
 rf_res <- fit_resamples(
   rf_spec, #The specification
-  SalePrice ~ . - Id - predict,
+  SalePrice ~ . - Id,
   house_folds, #Resamples
   control = control_resamples(save_pred = TRUE) #To fine tune the resampling process
 )
@@ -493,19 +496,19 @@ rf_res %>%
   geom_abline(lty = 2, color = "black", size = 1) +
   geom_point(alpha = 0.5)
 
-lm_spec <- linear_reg () %>% 
+lm_spec <- linear_reg() %>% 
   set_engine( engine ="lm")
 
 lm_spec
 
 lm_fit <- lm_spec %>% 
-  fit(SalePrice ~ . -Id - predict,
+  fit(SalePrice ~ . -Id,
       data = house_train)
 lm_fit 
 
 lm_res <- fit_resamples(
   lm_spec, #The specification
-  SalePrice ~ . -Id - predict,
+  SalePrice ~ . -Id,
   house_folds, #Resamples
   control = control_resamples(save_pred = TRUE) #To fine tune the resampling process
 )
