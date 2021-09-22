@@ -363,10 +363,13 @@ house_ready <- house %>%
   select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
-         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`)
+         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`, -LotFrontage, -Alley, -Exterior1st, -Exterior2nd
+         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -YrSold, -SaleType,
+         -Street, -LandContour, -CentralAir, -Heating)
 
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
+summary(linear1)
 
 
 house_ready$predict <- predict(linear1)
@@ -633,13 +636,14 @@ house_test$ndFlrSF <- house_test$`2ndFlrSF`
 house_test$SsnPorch <- house_test$`3SsnPorch`
 
 house_test_ready <- house_test %>% 
-  select(-MSSubClass, -LotShape, -MiscVal, -PoolArea, -ScreenPorch, - `3SsnPorch`, -EnclosedPorch, -OpenPorchSF,
-         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF,
+  select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
+         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
-         `2ndFlrSF`, - GarageArea, -Utilities)
+         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`, -LotFrontage, -Alley, -Exterior1st, -Exterior2nd
+         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -YrSold, -SaleType,
+         -Street, -LandContour, -CentralAir, -Heating)
 sum(is.na(house_test_ready))
 
-house_test_ready$MSSubClass <- ifelse(house_test_ready$MSSubClass == 150, 120, house_test_ready$MSSubClass)
 house_test_ready$prediction_lm1 <- predict(linear1, newdata = house_test_ready)
 submission_lm1 <- house_test_ready %>% 
   rename(SalePrice = prediction_lm1) %>% 
