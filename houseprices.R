@@ -372,8 +372,6 @@ summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
 summary(linear1)
 
-
-house_ready$predict <- predict(linear1)
 house_ready %>% 
   ggplot(aes(predict, SalePrice)) +
   geom_point()
@@ -445,8 +443,10 @@ house_test %>%
   geom_smooth()
 
 ## Random Forest
-
-rf_spec <- rand_forest(mode = "regression") %>% 
+library(usemodel)
+rf_spec <- rand_forest(mode = "regression",
+                       trees = 400,
+                       ) %>% 
   set_engine("ranger")
 
 rf_spec
@@ -469,6 +469,8 @@ rmse(result_train$actual, result_train$.pred)
 result_test <- rf_fit %>% 
   predict(new_data = house_test) %>% 
   mutate(actual = house_test$SalePrice)
+result_test
+
 result_test %>% 
   ggplot(aes(.pred, actual))+
   geom_point()
@@ -523,10 +525,25 @@ lm_res %>%
 
 
 
+
+##### XgBoost
+
+# xgb_spec <-
+#   boost_tree(mode = "regression"
+#     trees = 1000,
+#     trees_depth = tune(),
+#     mtry = tune()
+#   ) %>% 
+#   set_engine("xgboost")
+# 
+# 
+# xgb_fit <- xgb_spec %>% 
+#   fit(SalePrice ~ . - Id,
+#                     data = house_train)
 ### Preparing test data
 test <- readr::read_csv("test.csv")
 
-house_test <- test %>% 
+house_test_test <- test %>% 
   mutate(
          MSZoning = as.factor(MSZoning),
          Street = as.factor(Street),
@@ -653,3 +670,11 @@ submission_lm1 <- house_test_ready %>%
   select(Id, SalePrice) 
 write.csv(submission_lm1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_lm1.csv",
           row.names = FALSE)
+
+submission_rf1 <- rf_fit %>% 
+  predict(new_data = house_test_ready) %>% 
+  mutate(Id = house_test_ready$Id,
+         SalePrice = .pred) %>% 
+    select(Id, SalePrice)
+  write.csv(submission_rf1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_rf1.csv",
+            row.names = FALSE)
