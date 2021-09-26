@@ -331,6 +331,13 @@ house %>%
   geom_smooth(method = "gam")+
   coord_flip()
 
+house %>% 
+  ggplot(aes(x = reorder (Neighborhood, SalePrice, FUN = median), SalePrice, fill = Neighborhood))+
+        geom_bar(alpha = 0.5, stat = "summary")+
+        geom_hline(yintercept = 163000, linetype="dashed") +
+  labs(x = "Median Sale Price", y = "Sale Price") +
+  coord_flip()
+
 # Plotting the correlation of SalePrice with the numerical variables
 
 house$stFlrSF <- house$`1stFlrSF`
@@ -365,8 +372,35 @@ house_ready <- house %>%
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
          `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`, -LotFrontage, -Alley, -Exterior1st, -Exterior2nd
-         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -YrSold, -SaleType,
-         -Street, -LandContour, -CentralAir, -Heating)
+         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -SaleType,
+         -Street, -LandContour, -CentralAir, -Heating, -RoofStyle, -Condition1, -Condition2,
+         -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical,
+         -FireplaceQu, -Heating, -BsmtFinType2, -BsmtFinType1, -HouseStyle, -PavedDrive, -Functional,
+         -BldgType, -GarageType, -BsmtExposure)
+
+
+house_ready$Remod <- ifelse(house_ready$YearBuilt == house_ready$YearRemodAdd, 0, 1)
+house_ready$Age <- as.numeric(house_ready$YrSold) - house_ready$YearRemodAdd
+cor(house_ready$Age, house_ready$SalePrice)
+
+house_ready$New <- ifelse(house_ready$YearBuilt == house_ready$YrSold, 0, 1)
+table(house_ready$New)
+cor(house_ready$New, house_ready$SalePrice)
+house_ready$Rich <- 0
+house_ready$Rich[house_ready$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
+house_ready$Rich[house_ready$Neighborhood %in% c("Timber", "Somerst", "Veenker",
+                                                 "Crawfor", "ClearCr", "CollgCr",
+                                                 "Blmngtn", "NWAmes", "Gilbert",
+                                                 "SawyerW")] <- 3
+house_ready$Rich[house_ready$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
+                                                 "SWISU", "Blueste", "Sawyer",
+                                                 "BrkSide", "Edwards", "OldTown")] <- 2
+house_ready$Rich[house_ready$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
+
+table(house_ready$Rich)
+
+house_ready$TotalSq <- house_ready$GrLivArea + house_ready$TotalBsmtSF
+cor(house_ready$TotalSq, house_ready$SalePrice)
 
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
@@ -525,21 +559,55 @@ lm_res %>%
 
 
 
+library(caret)
+library(plyr)
+library(xgboost)
+library(Metrics)
+set.seed(45)
+house_split <- house_ready %>% 
+  initial_split()
+house_train <- training(house_split)
+house_test <- testing(house_split)
 
-##### XgBoost
+house_train <- training(house_split)
+house_test <- testing(house_split)
 
-# xgb_spec <-
-#   boost_tree(mode = "regression"
-#     trees = 1000,
-#     trees_depth = tune(),
-#     mtry = tune()
-#   ) %>% 
-#   set_engine("xgboost")
-# 
-# 
-# xgb_fit <- xgb_spec %>% 
-#   fit(SalePrice ~ . - Id,
-#                     data = house_train)
+control = trainControl(method = "cv",  # cross validation
+                       number = 10)     # 5-folds
+
+
+# Create grid of tuning parameters
+
+grid = expand.grid(nrounds=c(100, 200, 400),     # 3 different amounts of boosting rounds
+                   max_depth= c(4, 6),           # 2 values for tree depth
+                   eta=c(0.1, 0.05, 0.025),      # 3 values for learning rate
+                   gamma= c(0.1), 
+                   colsample_bytree = c(1), 
+                   min_child_weight = c(1),
+                   subsample=0.8)
+
+xgb =  train(SalePrice~. - Id,      
+             data=house_train,
+             method="xgbTree",
+             trControl=control, 
+             tuneGrid=grid,
+             maximize = FALSE)
+
+xgb$results
+xgb$bestTune
+a <- varImp(xgb)
+varImp(xgb, scale = TRUE)$importance
+
+house_train$predict_boost <- predict(xgb, new_data = house_train)
+test_predictions = predict(xgb, newdata=house_test)
+house_test$predict_boost <- test_predictions
+
+rmse(house_train$SalePrice, house_train$predict_boost)
+rmse(house_test$SalePrice, house_test$predict_boost)
+rmsle(house_train$SalePrice, house_train$predict_boost)
+rmsle(house_test$SalePrice, house_test$predict_boost)
+
+rmsle(house_train$SalePrice, exp(house_train$predict_boost))
 ### Preparing test data
 test <- readr::read_csv("test.csv")
 
