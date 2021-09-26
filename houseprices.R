@@ -376,7 +376,7 @@ house_ready <- house %>%
          -Street, -LandContour, -CentralAir, -Heating, -RoofStyle, -Condition1, -Condition2,
          -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical,
          -FireplaceQu, -Heating, -BsmtFinType2, -BsmtFinType1, -HouseStyle, -PavedDrive, -Functional,
-         -BldgType, -GarageType, -BsmtExposure)
+         -BldgType, -GarageType, -BsmtExposure, -GrLivArea, -TotalBsmtSF)
 
 
 house_ready$Remod <- ifelse(house_ready$YearBuilt == house_ready$YearRemodAdd, 0, 1)
