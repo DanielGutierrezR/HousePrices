@@ -366,8 +366,31 @@ cor(house$SalePrice, house$Baths)
 # Baths look good.
 
 ## Adding variables that seems to affect SalePrice
+
+house$Remod <- ifelse(house$YearBuilt == house$YearRemodAdd, 0, 1)
+house$Age <- as.numeric(house$YrSold) - house$YearRemodAdd
+cor(house$Age, house$SalePrice)
+
+house$New <- ifelse(house$YearBuilt == house$YrSold, 0, 1)
+table(house$New)
+cor(house$New, house$SalePrice)
+house$Rich <- 0
+house$Rich[house$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
+house$Rich[house$Neighborhood %in% c("Timber", "Somerst", "Veenker",
+                                                 "Crawfor", "ClearCr", "CollgCr",
+                                                 "Blmngtn", "NWAmes", "Gilbert",
+                                                 "SawyerW")] <- 3
+house$Rich[house$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
+                                                 "SWISU", "Blueste", "Sawyer",
+                                                 "BrkSide", "Edwards", "OldTown")] <- 2
+house$Rich[house$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
+
+table(house$Rich)
+
+house$TotalSq <- house$GrLivArea + house$TotalBsmtSF
+cor(house$TotalSq, house$SalePrice)
+
 house_ready <- house %>% 
-  filter(SalePrice < 600000) %>% 
   select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
          -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
          -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
@@ -376,31 +399,10 @@ house_ready <- house %>%
          -Street, -LandContour, -CentralAir, -Heating, -RoofStyle, -Condition1, -Condition2,
          -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical,
          -FireplaceQu, -Heating, -BsmtFinType2, -BsmtFinType1, -HouseStyle, -PavedDrive, -Functional,
-         -BldgType, -GarageType, -BsmtExposure, -GrLivArea, -TotalBsmtSF)
-
-
-house_ready$Remod <- ifelse(house_ready$YearBuilt == house_ready$YearRemodAdd, 0, 1)
-house_ready$Age <- as.numeric(house_ready$YrSold) - house_ready$YearRemodAdd
-cor(house_ready$Age, house_ready$SalePrice)
-
-house_ready$New <- ifelse(house_ready$YearBuilt == house_ready$YrSold, 0, 1)
-table(house_ready$New)
-cor(house_ready$New, house_ready$SalePrice)
-house_ready$Rich <- 0
-house_ready$Rich[house_ready$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
-house_ready$Rich[house_ready$Neighborhood %in% c("Timber", "Somerst", "Veenker",
-                                                 "Crawfor", "ClearCr", "CollgCr",
-                                                 "Blmngtn", "NWAmes", "Gilbert",
-                                                 "SawyerW")] <- 3
-house_ready$Rich[house_ready$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
-                                                 "SWISU", "Blueste", "Sawyer",
-                                                 "BrkSide", "Edwards", "OldTown")] <- 2
-house_ready$Rich[house_ready$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
-
-table(house_ready$Rich)
-
-house_ready$TotalSq <- house_ready$GrLivArea + house_ready$TotalBsmtSF
-cor(house_ready$TotalSq, house_ready$SalePrice)
+         -BldgType, -GarageType, -BsmtExposure, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd
+         ,) %>% 
+  mutate(SalePrice = log(SalePrice),
+         YrSold = as.factor(YrSold))
 
 summary(house_ready)
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
@@ -411,7 +413,6 @@ house_ready %>%
   geom_point()
 
 # The model looks good using only data that it has seen. Now lets try splitting the data set
-
 
 set.seed(1234)
 house_split <- house_ready %>% 
