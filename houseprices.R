@@ -521,12 +521,9 @@ houseprices$Rich[houseprices$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
                                      "BrkSide", "Edwards", "OldTown")] <- 2
 houseprices$Rich[houseprices$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
 
-houseprices$TotalPorchSq <- houseprices$OpenPorchSF + houseprices$EnclosedPorch 
-+ houseprices$X3SsnPorch + houseprices$ScreenPorch
+houseprices$TotalPorchSq <- houseprices$OpenPorchSF + houseprices$EnclosedPorch + houseprices$X3SsnPorch + houseprices$ScreenPorch
 
-houseprices$TotalSq <- houseprices$GrLivArea + houseprices$TotalBsmtSF +  
-  houseprices$GarageArea + houseprices$TotalPorchSq + houseprices$MasVnrArea + 
-  houseprices$X1stFlrSF + houseprices$X2ndFlrSF
+houseprices$TotalSq <- houseprices$GrLivArea + houseprices$TotalBsmtSF + houseprices$X1stFlrSF + houseprices$GarageArea + houseprices$TotalPorchSq + houseprices$X2ndFlrSF
 
 ### Yes or No variables for each feature
 houseprices$Pool <- ifelse(houseprices$PoolArea > 0, 1, 0)
@@ -539,8 +536,8 @@ houseprices <- houseprices %>%
   select(-ScreenPorch, -EnclosedPorch, -OpenPorchSF, -X3SsnPorch,
          -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
          -X1stFlrSF, -X2ndFlrSF, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd,
-         -PoolArea, -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
-         -MasVnrArea) %>% 
+         -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
+         -MasVnrArea, -PoolArea, -New) %>% 
   mutate(YrSold = as.factor(YrSold), 
          Rich = as.factor(Rich),
          Remod = as.factor(Remod),
@@ -549,7 +546,7 @@ houseprices <- houseprices %>%
          Fireplace = as.factor(Fireplace))
 
 ## Random Forest
-
+set.seed(1234)
 house_split_tot <- houseprices %>% 
   initial_split()
 houseprices_train <- training(house_split_tot)
@@ -647,8 +644,8 @@ control <- trainControl(method = "cv",  # cross validation
 
 # Create grid of tuning parameters
 
-grid <- expand.grid(nrounds=c(100, 200, 400, 600),     # 3 different amounts of boosting rounds
-                   max_depth= c(2, 4, 6),           # 2 values for tree depth
+grid <- expand.grid(nrounds=c(100, 200, 400, 800),     # 3 different amounts of boosting rounds
+                   max_depth= c(4, 6),           # 2 values for tree depth
                    eta=c(0.1, 0.05, 0.025),      # 3 values for learning rate
                    gamma= c(0.1), 
                    colsample_bytree = c(1), 
@@ -886,12 +883,10 @@ test_houseprices$Rich[test_houseprices$Neighborhood %in% c("Mitchel", "NPkVill",
                                                  "BrkSide", "Edwards", "OldTown")] <- 2
 test_houseprices$Rich[test_houseprices$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
 
-test_houseprices$TotalPorchSq <- test_houseprices$OpenPorchSF + test_houseprices$EnclosedPorch 
-+ test_houseprices$X3SsnPorch + test_houseprices$ScreenPorch
+test_houseprices$TotalPorchSq <- test_houseprices$OpenPorchSF + test_houseprices$EnclosedPorch + test_houseprices$X3SsnPorch + test_houseprices$ScreenPorch
 
 test_houseprices$TotalSq <- test_houseprices$GrLivArea + test_houseprices$TotalBsmtSF + 
-  test_houseprices$GarageArea + test_houseprices$TotalPorchSq +
-  test_houseprices$MasVnrArea + test_houseprices$X1stFlrSF + test_houseprices$X2ndFlrSF
+  test_houseprices$GarageArea + test_houseprices$TotalPorchSq + test_houseprices$MasVnrArea + test_houseprices$X1stFlrSF + test_houseprices$X2ndFlrSF
 
 ### Yes or No variables for each feature
 test_houseprices$Pool <- ifelse(test_houseprices$PoolArea > 0, 1, 0)
@@ -911,15 +906,14 @@ test_houseprices <- test_houseprices %>%
   select(-ScreenPorch, -EnclosedPorch, -OpenPorchSF, -X3SsnPorch,
          -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
          -X1stFlrSF, -X2ndFlrSF, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd,
-         -PoolArea, -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
-         -MasVnrArea) %>% 
+          -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
+         -MasVnrArea, -PoolArea, -New) %>% 
   mutate(YrSold = as.factor(YrSold), 
          Rich = as.factor(Rich),
          Remod = as.factor(Remod),
          Pool = as.factor(Pool),
          FenceBinary = as.factor(FenceBinary),
-         Fireplace = as.factor(Fireplace),
-         MSZoning = as.numeric(MSZoning))
+         Fireplace = as.factor(Fireplace))
 
 ###################
 
@@ -930,7 +924,7 @@ submission_xgb2 <- test_houseprices %>%
 colnames(submission_xgb2)[2] <- "SalePrice"
 
 
-write.csv(submission_xgb2, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_xgb5.csv",
+write.csv(submission_xgb2, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_xgb10.csv",
           row.names = FALSE)
 
 
