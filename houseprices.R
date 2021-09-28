@@ -9,6 +9,8 @@ library(corrplot)
 library(gridExtra)
 library(ggcorrplot)
 library(mgcv)
+library(xgboost)
+library(Metrics)
 theme_set(theme_bw())
 
 
@@ -385,26 +387,42 @@ house$Rich[house$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
                                                  "BrkSide", "Edwards", "OldTown")] <- 2
 house$Rich[house$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
 
-table(house$Rich)
+### Here I created new variable for total porch area and then added it to the TotalSq
+house$TotalPorchSq <- house$OpenPorchSF + house$EnclosedPorch + house$`3SsnPorch` + house$ScreenPorch
 
-house$TotalSq <- house$GrLivArea + house$TotalBsmtSF
+house$TotalSq <- house$GrLivArea + house$TotalBsmtSF + house$GarageArea + house$TotalPorchSq +
+  house$MasVnrArea + house$`1stFlrSF` + house$`2ndFlrSF`
 cor(house$TotalSq, house$SalePrice)
 
-house_ready <- house %>% 
-  select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
-         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
-         -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
-         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`, -LotFrontage, -Alley, -Exterior1st, -Exterior2nd
-         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -SaleType,
-         -Street, -LandContour, -CentralAir, -Heating, -RoofStyle, -Condition1, -Condition2,
-         -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical,
-         -FireplaceQu, -Heating, -BsmtFinType2, -BsmtFinType1, -HouseStyle, -PavedDrive, -Functional,
-         -BldgType, -GarageType, -BsmtExposure, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd
-         ,) %>% 
-  mutate(SalePrice = log(SalePrice),
-         YrSold = as.factor(YrSold))
+### Yes or No variables for each feature
+house$Pool <- ifelse(house$PoolArea > 0, 1, 0)
+house$FenceBinary <- ifelse(house$Fence == "None", 0, 1)
+house$Fireplace <- ifelse(house$Fireplaces > 0, 1, 0)
 
-summary(house_ready)
+### We also have to think about MSSubClass as it was out of the analysis because
+### in the test data set it includes a new category for 150. 
+### Also, analyzing the data LotFrontage is important but there are two outliers > 300
+### KitchenQual seems to affect but KitchenAbvGr is strange
+### RoofMtl also seem to affect but there are few observations for some categories
+### HouseStyle does matter and GarageType too
+
+house_ready <- house %>% 
+  filter(LotFrontage < 300) %>% 
+  select(-LotShape, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
+         -ndFlrSF,-BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
+         -`1stFlrSF`, `2ndFlrSF`,  - `3SsnPorch`, -Fence, -Fireplaces, -FireplaceQu, -Alley,
+         -ExterQual, -ExterCond, -Foundation, -Heating, -MiscFeature,-MoSold, -SaleType,
+         -Street, -LandContour, -RoofStyle, -Condition2,
+         -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical
+         ,-BsmtFinType2, -BsmtFinType1, -PavedDrive, -Functional,
+         -BldgType, -BsmtExposure, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd
+         , -Neighborhood, -HeatingQC, -BsmtCond, -New, -GarageArea) %>% 
+  mutate(SalePrice = log(SalePrice),
+         YrSold = as.factor(YrSold), Rich = as.factor(Rich),
+         Remod = as.factor(Remod))
+
+str(house_ready)
+
 linear1 <- lm(SalePrice~. - Id, data = house_ready)
 summary(linear1)
 
@@ -449,52 +467,111 @@ house_test %>%
 
 rmse(house_test$SalePrice, house_test$predict)
 
-## Now lets fit an additive model
-df1 <- c("MSZoning", "Neighborhood", "MSSubClass", "Condition1", "Condition2", "HouseStyle", "OverallQual",
-         "OverallCond", "ExterCond", "GarageType", "PoolQC", "YrSold", "MoSold", "SaleCondition", 
-         "Fireplaces", "GarageCars", "Baths")
-df2 <- c("YearBuilt", "LotFrontage", "LotArea", "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", 
-          "TotalBsmtSF", "stFlrSF","GrLivArea", 
-         "TotRmsAbvGrd", "GarageArea")
+## Now, as we will use tree-based models we can take advantage of the algorithm feature
+## To handle the missing values in the data. For this, we need the dataset without imputing missing
+## values in the numerical variables. We have to set -1 as a numeric flag so the model can identify it 
+## as NA's.
 
-var1 <- paste(df1, collapse=" + ")
-var2 <- paste('s(', df2[-1], ')', sep = "", collapse = ' + ')
+houseprices <- read.csv("train.csv", stringsAsFactors = FALSE) ### Original train data set
+test_houseprices <- read.csv("test.csv", stringsAsFactors = FALSE) #### original test data set
 
-fm <- as.formula(paste("SalePrice ~", var1, "+", var2))
-spline1 <- gam(fm, data = house_train)
-predict_trainspline <- predict(spline1)
+SalePrice <- houseprices$SalePrice 
+houseprices$SalePrice <- NULL
 
-predict_testspline <- predict(spline1, newdata = house_test)
-rmse(house_train$SalePrice,house_train$predicted_spline)
-house_train %>% 
-  ggplot(aes(predicted_spline, SalePrice)) +
-  geom_point() +
-  geom_smooth()
+full_data <- rbind(houseprices,test_houseprices)
 
-rmse(house_test$SalePrice,house_test$predicted_spline)
-house_test %>% 
-  ggplot(aes(predicted_spline, SalePrice)) +
-  geom_point() +
-  geom_smooth()
+for(col in  1:80){
+  if(class(full_data[,col])=="character"){
+    new_col = full_data[,col]
+    new_col[which(is.na(new_col),T)]="None"
+    full_data[col] =  as.factor(new_col)
+    
+  }
+}
+
+
+#now the levels of train & test datasets will be same
+# Separate out our train and test sets
+
+houseprices <- full_data[1:nrow(houseprices),]
+houseprices$SalePrice <- SalePrice  
+test_houseprices <- full_data[(nrow(houseprices)+1):nrow(full_data),]
+
+houseprices[is.na(houseprices)] <- -1 ### Numeric flag
+
+### Now we have to create the new features for this data set too.
+
+houseprices <- houseprices %>% 
+  mutate(Baths = 0.5*(HalfBath) + FullBath + 0.5*(BsmtHalfBath) + BsmtFullBath)
+
+houseprices$Remod <- ifelse(houseprices$YearBuilt == houseprices$YearRemodAdd, 0, 1)
+
+houseprices$Age <- as.numeric(houseprices$YrSold) - houseprices$YearRemodAdd
+
+houseprices$New <- ifelse(houseprices$YearBuilt == houseprices$YrSold, 0, 1)
+
+houseprices$Rich <- 0
+houseprices$Rich[houseprices$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
+houseprices$Rich[houseprices$Neighborhood %in% c("Timber", "Somerst", "Veenker",
+                                     "Crawfor", "ClearCr", "CollgCr",
+                                     "Blmngtn", "NWAmes", "Gilbert",
+                                     "SawyerW")] <- 3
+houseprices$Rich[houseprices$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
+                                     "SWISU", "Blueste", "Sawyer",
+                                     "BrkSide", "Edwards", "OldTown")] <- 2
+houseprices$Rich[houseprices$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
+
+houseprices$TotalPorchSq <- houseprices$OpenPorchSF + houseprices$EnclosedPorch 
++ houseprices$X3SsnPorch + houseprices$ScreenPorch
+
+houseprices$TotalSq <- houseprices$GrLivArea + houseprices$TotalBsmtSF +  
+  houseprices$GarageArea + houseprices$TotalPorchSq + houseprices$MasVnrArea + 
+  houseprices$X1stFlrSF + houseprices$X2ndFlrSF
+
+### Yes or No variables for each feature
+houseprices$Pool <- ifelse(houseprices$PoolArea > 0, 1, 0)
+houseprices$FenceBinary <- ifelse(houseprices$Fence == "None", 0, 1)
+houseprices$Fireplace <- ifelse(houseprices$Fireplaces > 0, 1, 0)
+
+## Now we have to drop the variables that we use to create the new features
+
+houseprices <- houseprices %>% 
+  select(-ScreenPorch, -EnclosedPorch, -OpenPorchSF, -X3SsnPorch,
+         -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
+         -X1stFlrSF, -X2ndFlrSF, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd,
+         -PoolArea, -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
+         -MasVnrArea) %>% 
+  mutate(YrSold = as.factor(YrSold), 
+         Rich = as.factor(Rich),
+         Remod = as.factor(Remod),
+         Pool = as.factor(Pool),
+         FenceBinary = as.factor(FenceBinary),
+         Fireplace = as.factor(Fireplace))
 
 ## Random Forest
-library(usemodel)
+
+house_split_tot <- houseprices %>% 
+  initial_split()
+houseprices_train <- training(house_split_tot)
+houseprices_test <- testing(house_split_tot)
+
+
 rf_spec <- rand_forest(mode = "regression",
-                       trees = 400,
-                       ) %>% 
+                       trees = 500,
+                       mtry = ) %>% 
   set_engine("ranger")
 
 rf_spec
 
 rf_fit <- rf_spec %>% 
   fit(SalePrice ~ . - Id,
-      data = house_train)
+      data = houseprices_train)
 
 rf_fit
 
 result_train <- rf_fit %>% 
-  predict(new_data = house_train) %>% 
-  mutate(actual = house_train$SalePrice)
+  predict(new_data = houseprices_train) %>% 
+  mutate(actual = houseprices_train$SalePrice)
 
 result_train %>% 
   ggplot(aes(.pred, actual))+
@@ -502,8 +579,8 @@ result_train %>%
 rmse(result_train$actual, result_train$.pred)
 
 result_test <- rf_fit %>% 
-  predict(new_data = house_test) %>% 
-  mutate(actual = house_test$SalePrice)
+  predict(new_data = houseprices_test) %>% 
+  mutate(actual = houseprices_test$SalePrice)
 result_test
 
 result_test %>% 
@@ -513,9 +590,10 @@ result_test %>%
 rmse(result_train$actual, result_train$.pred)
 rmse(result_test$actual, result_test$.pred)
 
+
 ### RMSE for tets too high. Lets use cv
 
-house_folds <- vfold_cv(house_train) # This divides our house_train in 10 parts
+house_folds <- vfold_cv(houseprices_train) # This divides our house_train in 10 parts
 
 rf_res <- fit_resamples(
   rf_spec, #The specification
@@ -532,6 +610,8 @@ rf_res %>%
   ggplot(aes(SalePrice, .pred, color = id)) +
   geom_abline(lty = 2, color = "black", size = 1) +
   geom_point(alpha = 0.5)
+
+
 
 lm_spec <- linear_reg() %>% 
   set_engine( engine ="lm")
@@ -560,61 +640,49 @@ lm_res %>%
 
 
 
-library(caret)
-library(plyr)
-library(xgboost)
-library(Metrics)
-set.seed(45)
-house_split <- house_ready %>% 
-  initial_split()
-house_train <- training(house_split)
-house_test <- testing(house_split)
+## xgboost
 
-house_train <- training(house_split)
-house_test <- testing(house_split)
-
-control = trainControl(method = "cv",  # cross validation
+control <- trainControl(method = "cv",  # cross validation
                        number = 10)     # 5-folds
-
 
 # Create grid of tuning parameters
 
-grid = expand.grid(nrounds=c(100, 200, 400),     # 3 different amounts of boosting rounds
-                   max_depth= c(4, 6),           # 2 values for tree depth
+grid <- expand.grid(nrounds=c(100, 200, 400, 600),     # 3 different amounts of boosting rounds
+                   max_depth= c(2, 4, 6),           # 2 values for tree depth
                    eta=c(0.1, 0.05, 0.025),      # 3 values for learning rate
                    gamma= c(0.1), 
                    colsample_bytree = c(1), 
                    min_child_weight = c(1),
                    subsample=0.8)
 
-xgb =  train(SalePrice~. - Id,      
-             data=house_train,
+xgb <-  train(SalePrice~. - Id,      
+             data=houseprices_train,
              method="xgbTree",
              trControl=control, 
              tuneGrid=grid,
              maximize = FALSE)
 
+
 xgb$results
 xgb$bestTune
-a <- varImp(xgb)
+varImp(xgb)
 varImp(xgb, scale = TRUE)$importance
 
-house_train$predict_boost <- predict(xgb, new_data = house_train)
-test_predictions = predict(xgb, newdata=house_test)
-house_test$predict_boost <- test_predictions
+houseprices_train$predict_boost <- predict(xgb, new_data = houseprices_train)
+test_predictions <- predict(xgb, newdata = houseprices_test)
+houseprices_test$predict_boost <- test_predictions
 
-rmse(house_train$SalePrice, house_train$predict_boost)
-rmse(house_test$SalePrice, house_test$predict_boost)
-rmsle(house_train$SalePrice, house_train$predict_boost)
-rmsle(house_test$SalePrice, house_test$predict_boost)
 
-rmsle(house_train$SalePrice, exp(house_train$predict_boost))
+rmse(houseprices_train$SalePrice, houseprices_train$predict_boost)
+rmse(houseprices_test$SalePrice, houseprices_test$predict_boost)
+rmsle(houseprices_train$SalePrice, houseprices_train$predict_boost)
+rmsle(houseprices_test$SalePrice, houseprices_test$predict_boost)
+
 ### Preparing test data
-test <- readr::read_csv("test.csv")
+test_houseprices <- readr::read_csv("test.csv")
 
-house_test_test <- test %>% 
-  mutate(
-         MSZoning = as.factor(MSZoning),
+test_file <- test_houseprices %>% 
+  mutate(MSZoning = as.factor(MSZoning),
          Street = as.factor(Street),
          Alley = as.factor(Alley),
          LotShape = as.factor(LotShape),
@@ -660,78 +728,212 @@ house_test_test <- test %>%
          MoSold = as.factor(MoSold),
          YrSold = as.factor(YrSold),
          SaleType = as.factor(SaleType),
-         SaleCondition = as.factor(SaleCondition))
-house_test$LotFrontage[is.na(house_test$LotFrontage)] <- round(mean(house_test$LotFrontage, na.rm=TRUE))
-summary(house_test$LotFrontage)
+         SaleCondition = as.factor(SaleCondition),
+         KitchenAbvGr = as.factor(KitchenAbvGr))
+test_file$LotFrontage[is.na(test_file$LotFrontage)] <- round(mean(test_file$LotFrontage, na.rm=TRUE))
+summary(test_file$LotFrontage)
 
-house_test$MSSubClass <- ifelse(house_test_ready$MSSubClass == 150, 120, house_test_ready$MSSubClass)
-summary(house_test$MSSubClass)
+test_file$GarageArea[is.na(test_file$GarageArea)] <- round(median(test_file$GarageArea, na.rm=TRUE))
+
+
+table(test_file$Utilities)
+summary(test_file$Utilities)
+test_file$Utilities[is.na(test_file$Utilities)] <- "AllPub"
+#test_file$MSSubClass <- ifelse(test_file_ready$MSSubClass == 150, 120, test_file_ready$MSSubClass)
+#summary(test_file$MSSubClass)
 
 for (i in factor_list) {
-  house_test[[i]] <- na_to_none(house_test[[i]])
+  test_file[[i]] <- na_to_none(test_file[[i]])
 }
-summary(house_test)
+summary(test_file)
 
-colnames(house_test)[colSums(is.na(house_test)) > 0]
+colnames(test_file)[colSums(is.na(test_file)) > 0]
 
 ## For GarageYrBlt I assume a NA means No garage but we can visualize it 
-garage <- house_test %>% 
+garage <- test_file %>% 
   select(GarageType, GarageYrBlt)
 
 DT::datatable(filter(garage, garage$GarageType == "None"))
-str(house_test$GarageYrBlt)
+str(test_file$GarageYrBlt)
 
-house_test$GarageYrBlt[is.na(house_test$GarageYrBlt)] <- 0
+
+test_file$GarageYrBlt[is.na(test_file$GarageYrBlt)] <- 0
 
 ## For MasVnrType we can do substitute the Na's by nones and for the area by 0's
-house_test$MasVnrType[is.na(house_test$MasVnrType)] <- "None"
-summary(house_test$MasVnrType)
+test_file$MasVnrType[is.na(test_file$MasVnrType)] <- "None"
+summary(test_file$MasVnrType)
 
-house_test$MasVnrArea[is.na(house_test$MasVnrArea)] <- 0
 
-colnames(house_test)[colSums(is.na(house_test)) > 0]
+test_file$GarageCars[is.na(test_file$GarageCars)] <- 2
+
+
+test_file$MasVnrArea[is.na(test_file$MasVnrArea)] <- 0
+
+colnames(test_file)[colSums(is.na(test_file)) > 0]
 
 ## For MSZoning we use the most common zone RL
-house_test$MSZoning[is.na(house_test$MSZoning)] <- "RL"
+test_file$MSZoning[is.na(test_file$MSZoning)] <- "RL"
 
 ## Utilities is problematic. I think AllPub is the best solution 
-summary(house_test$Utilities)
+summary(test_file$Utilities)
 
 ## Creating the Baths variables so we can remove all of the others.
-house_test <- house_test %>% 
+test_file <- test_file %>% 
   mutate(Baths = 0.5*(HalfBath) + FullBath + 0.5*(BsmtHalfBath) + BsmtFullBath)
 
 ## Also we will remove all the Area variables and keep only totalarea.
 
 ## For Sale Type its only one observation missing so we can substitute it 
 ## with the most common WD
-house_test$SaleType[is.na(house_test$SaleType)] <- "WD"
+test_file$SaleType[is.na(test_file$SaleType)] <- "WD"
 
 ## Same with Functional and the rest of the categorical variables
-house_test$Functional[is.na(house_test$Functional)] <- "Typ"
-house_test$Exterior1st[is.na(house_test$Exterior1st)] <- "VinylSd"
-house_test$Exterior2nd[is.na(house_test$Exterior2nd)] <- "VinylSd"
-house_test$KitchenQual[is.na(house_test$KitchenQual)] <- "TA"
+test_file$Functional[is.na(test_file$Functional)] <- "Typ"
+test_file$Exterior1st[is.na(test_file$Exterior1st)] <- "VinylSd"
+test_file$Exterior2nd[is.na(test_file$Exterior2nd)] <- "VinylSd"
+test_file$KitchenQual[is.na(test_file$KitchenQual)] <- "TA"
 
 
 ## For the numerical we substitute them for the mean or median value
-house_test$BsmtFinSF1[is.na(house_test$BsmtFinSF1)] <- round(mean(house_test$BsmtFinSF1, na.rm=TRUE))
-house_test$Baths[is.na(house_test$Baths)] <- median(house_test$Baths, na.rm=TRUE)
-house_test$TotalBsmtSF[is.na(house_test$TotalBsmtSF)] <- round(mean(house_test$TotalBsmtSF, na.rm=TRUE))
-house_test$GarageCars[is.na(house_test$GarageCars)] <- median(house_test$GarageCars, na.rm=TRUE)
+test_file$BsmtFinSF1[is.na(test_file$BsmtFinSF1)] <- round(mean(test_file$BsmtFinSF1, na.rm=TRUE))
+test_file$Baths[is.na(test_file$Baths)] <- median(test_file$Baths, na.rm=TRUE)
+test_file$TotalBsmtSF[is.na(test_file$TotalBsmtSF)] <- round(mean(test_file$TotalBsmtSF, na.rm=TRUE))
+test_file$GarageCars[is.na(test_file$GarageCars)] <- median(test_file$GarageCars, na.rm=TRUE)
 
-house_test$stFlrSF <- house_test$`1stFlrSF`
-house_test$ndFlrSF <- house_test$`2ndFlrSF`
-house_test$SsnPorch <- house_test$`3SsnPorch`
+test_file$stFlrSF <- test_file$`1stFlrSF`
+test_file$ndFlrSF <- test_file$`2ndFlrSF`
+test_file$SsnPorch <- test_file$`3SsnPorch`
 
-house_test_ready <- house_test %>% 
-  select(-MSSubClass,-LotShape, -MiscVal, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
-         -WoodDeckSF, -GarageYrBlt, -KitchenAbvGr, -BedroomAbvGr, -LowQualFinSF, -ndFlrSF,
-         -BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath, -`1stFlrSF`, 
-         `2ndFlrSF`, - GarageArea, -Utilities,  - `3SsnPorch`, -LotFrontage, -Alley, -Exterior1st, -Exterior2nd
-         ,-ExterQual, -ExterCond, -Foundation, -Heating, -Fence, -MiscFeature,-MoSold, -YrSold, -SaleType,
-         -Street, -LandContour, -CentralAir, -Heating)
-sum(is.na(house_test_ready))
+################
+test_file$Remod <- ifelse(test_file$YearBuilt == test_file$YearRemodAdd, 0, 1)
+test_file$Age <- as.numeric(as.character(test_file$YrSold)) - test_file$YearBuilt
+test_file$Age[is.na(test_file$Age)] <- round(mean(test_file$Age, na.rm=TRUE))
+test_file$Age[test_file$Age <0] <- 0
+
+test_file$New <- as.factor(ifelse(test_file$YearBuilt == test_file$YrSold, 0, 1))
+table(test_file$New)
+test_file$Rich <- 0
+test_file$Rich[test_file$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
+test_file$Rich[test_file$Neighborhood %in% c("Timber", "Somerst", "Veenker",
+                                             "Crawfor", "ClearCr", "CollgCr",
+                                             "Blmngtn", "NWAmes", "Gilbert",
+                                             "SawyerW")] <- 3
+test_file$Rich[test_file$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
+                                             "SWISU", "Blueste", "Sawyer",
+                                             "BrkSide", "Edwards", "OldTown")] <- 2
+test_file$Rich[test_file$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
+
+table(test_file$Rich)
+
+test_file$TotalSq <- test_file$GrLivArea + test_file$TotalBsmtSF
+
+
+test_file$TotalPorchSq <- test_file$OpenPorchSF + test_file$EnclosedPorch + test_file$`3SsnPorch` + test_file$ScreenPorch
+
+test_file$TotalSq <- test_file$GrLivArea + test_file$TotalBsmtSF + test_file$GarageArea + test_file$TotalPorchSq +
+  test_file$MasVnrArea + test_file$`1stFlrSF` + test_file$`2ndFlrSF`
+
+### Yes or No variables for each feature
+test_file$Pool <- ifelse(test_file$PoolArea > 0, 1, 0)
+test_file$FenceBinary <- ifelse(test_file$Fence == "None", 0, 1)
+test_file$Fireplace <- ifelse(test_file$Fireplaces > 0, 1, 0)
+summary(test_file)
+
+test_file_ready <- test_file %>% 
+  select(-LotShape, -PoolArea, -ScreenPorch, - SsnPorch, -EnclosedPorch, -OpenPorchSF,
+         -ndFlrSF,-BsmtUnfSF, -BsmtFinSF2, -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
+         -`1stFlrSF`, `2ndFlrSF`,  - `3SsnPorch`, -Fence, -Fireplaces, -FireplaceQu,
+         -ExterQual, -ExterCond, -Foundation, -Heating, -MiscFeature,-MoSold, -SaleType,
+         -LandContour, -RoofStyle, -Condition2,
+         -RoofMatl, -PoolQC, -GarageQual, -SaleCondition, -GarageCond, -GarageFinish, -Electrical
+         ,-BsmtFinType2, -BsmtFinType1, -PavedDrive, -Functional,
+         -BldgType, -BsmtExposure, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd
+         , -Neighborhood, -HeatingQC, -BsmtCond, -New, -GarageArea) %>% 
+  mutate(YrSold = as.factor(YrSold), 
+         Rich = as.factor(Rich),
+         Remod = as.factor(Remod))
+
+
+str(test_file_ready)
+# test_file_ready <- test_file_ready %>%
+#   mutate(LotArea = log(LotArea), MasVnrArea = ifelse(MasVnrArea == 0, 0, log(MasVnrArea)), BsmtFinSF1 = ifelse(BsmtFinSF1 == 0, 0, log(BsmtFinSF1)), `2ndFlrSF` = ifelse(`2ndFlrSF` == 0, 0, log(`2ndFlrSF`)),
+#          TotRmsAbvGrd = log(TotRmsAbvGrd), Fireplaces = ifelse(Fireplaces == 0, 0, log(Fireplaces)), stFlrSF = log(stFlrSF), Baths = log(Baths), Age = ifelse(Age == 0, 0, log(Age)), TotalSq = log(TotalSq))
+summary(test_file_ready)
+
+### For tree-based models
+
+test_houseprices[is.na(test_houseprices)] <- -1 ### Numeric flag
+
+### Now we have to create the new features for this data set too.
+
+test_houseprices <- test_houseprices %>% 
+  mutate(Baths = 0.5*(HalfBath) + FullBath + 0.5*(BsmtHalfBath) + BsmtFullBath)
+
+test_houseprices$Remod <- ifelse(test_houseprices$YearBuilt == test_houseprices$YearRemodAdd, 0, 1)
+
+test_houseprices$Age <- as.numeric(test_houseprices$YrSold) - test_houseprices$YearRemodAdd
+
+test_houseprices$New <- ifelse(test_houseprices$YearBuilt == test_houseprices$YrSold, 0, 1)
+
+test_houseprices$Rich <- 0
+test_houseprices$Rich[test_houseprices$Neighborhood %in% c("NridgHt", "NoRidge", "StoneBr")] <- 4
+test_houseprices$Rich[test_houseprices$Neighborhood %in% c("Timber", "Somerst", "Veenker",
+                                                 "Crawfor", "ClearCr", "CollgCr",
+                                                 "Blmngtn", "NWAmes", "Gilbert",
+                                                 "SawyerW")] <- 3
+test_houseprices$Rich[test_houseprices$Neighborhood %in% c("Mitchel", "NPkVill", "NAmes",
+                                                 "SWISU", "Blueste", "Sawyer",
+                                                 "BrkSide", "Edwards", "OldTown")] <- 2
+test_houseprices$Rich[test_houseprices$Neighborhood %in% c("BrDale", "IDOTRR", "MeadowV")] <- 1
+
+test_houseprices$TotalPorchSq <- test_houseprices$OpenPorchSF + test_houseprices$EnclosedPorch 
++ test_houseprices$X3SsnPorch + test_houseprices$ScreenPorch
+
+test_houseprices$TotalSq <- test_houseprices$GrLivArea + test_houseprices$TotalBsmtSF + 
+  test_houseprices$GarageArea + test_houseprices$TotalPorchSq +
+  test_houseprices$MasVnrArea + test_houseprices$X1stFlrSF + test_houseprices$X2ndFlrSF
+
+### Yes or No variables for each feature
+test_houseprices$Pool <- ifelse(test_houseprices$PoolArea > 0, 1, 0)
+test_houseprices$FenceBinary <- ifelse(test_houseprices$Fence == "None", 0, 1)
+test_houseprices$Fireplace <- ifelse(test_houseprices$Fireplaces > 0, 1, 0)
+
+# test_houseprices$Utilities <- as.factor(ifelse(test_houseprices$Utilities == "None", "NoSeWa", "AllPub"))
+# test_houseprices$Exterior1st <- factor(ifelse(test_houseprices$Exterior1st == "None", "VinylSd", as.character(test_houseprices$Exterior1st)))
+# test_houseprices$Exterior2nd <- factor(ifelse(test_houseprices$Exterior2nd == "None", "VinylSd", as.character(test_houseprices$Exterior2nd)))
+# test_houseprices$KitchenQual <- factor(ifelse(test_houseprices$KitchenQual == "None", "TA", as.character(test_houseprices$KitchenQual)))
+# test_houseprices$Functional <- factor(ifelse(test_houseprices$Functional == "None", "Typ", as.character(test_houseprices$Functional)))
+# test_houseprices$SaleType <- factor(ifelse(test_houseprices$SaleType == "None", "WD", as.character(test_houseprices$SaleType)))
+
+## Now we have to drop the variables that we use to create the new features
+
+test_houseprices <- test_houseprices %>% 
+  select(-ScreenPorch, -EnclosedPorch, -OpenPorchSF, -X3SsnPorch,
+         -HalfBath, -FullBath, -BsmtHalfBath, -BsmtFullBath,
+         -X1stFlrSF, -X2ndFlrSF, -GrLivArea, -TotalBsmtSF, -YearBuilt, -YearRemodAdd,
+         -PoolArea, -Fence, -Fireplaces, -Neighborhood, -GarageArea, -TotalPorchSq,
+         -MasVnrArea) %>% 
+  mutate(YrSold = as.factor(YrSold), 
+         Rich = as.factor(Rich),
+         Remod = as.factor(Remod),
+         Pool = as.factor(Pool),
+         FenceBinary = as.factor(FenceBinary),
+         Fireplace = as.factor(Fireplace),
+         MSZoning = as.numeric(MSZoning))
+
+###################
+
+test_houseprices$prediction_xgb <- predict(xgb, newdata = test_houseprices)
+submission_xgb2 <- test_houseprices %>% 
+  select(Id, prediction_xgb) 
+
+colnames(submission_xgb2)[2] <- "SalePrice"
+
+
+write.csv(submission_xgb2, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_xgb5.csv",
+          row.names = FALSE)
+
+
 
 house_test_ready$prediction_lm1 <- predict(linear1, newdata = house_test_ready)
 submission_lm1 <- house_test_ready %>% 
@@ -744,6 +946,6 @@ submission_rf1 <- rf_fit %>%
   predict(new_data = house_test_ready) %>% 
   mutate(Id = house_test_ready$Id,
          SalePrice = .pred) %>% 
-    select(Id, SalePrice)
-  write.csv(submission_rf1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_rf1.csv",
-            row.names = FALSE)
+  select(Id, SalePrice)
+write.csv(submission_rf1, "C:\\Users\\Daniel Gutierrez\\Desktop\\R Practice\\House Prices\\submission_rf1.csv",
+          row.names = FALSE)
